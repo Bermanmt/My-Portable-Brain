@@ -2,7 +2,7 @@
 
 > A personal knowledge vault powered by Claude. Starts simple. Gets smarter as you use it.
 
-[![Status](https://img.shields.io/badge/status-v0.1-blue.svg)](https://github.com/yourusername/portable-brain)
+[![Status](https://img.shields.io/badge/status-v0.1-blue.svg)](https://github.com/Bermanmt/My-Portable-Brain)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Requires](https://img.shields.io/badge/requires-bash-lightgrey.svg)]()
 
@@ -25,7 +25,7 @@ No databases. No Python. No dependencies beyond bash and a Claude session.
 ## Quick start
 
 ```bash
-git clone https://github.com/yourusername/portable-brain.git
+git clone https://github.com/Bermanmt/My-Portable-Brain.git
 cd portable-brain
 bash start.sh
 ```

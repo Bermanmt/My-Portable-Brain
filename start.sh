@@ -61,7 +61,7 @@ cat << 'EOF'
   ╚══════════════════════════════════════════╝
 EOF
 echo -e "${NC}"
-echo -e "  ${DIM}v0.1 — github.com/yourusername/portable-brain${NC}"
+echo -e "  ${DIM}v0.1 — github.com/Bermanmt/My-Portable-Brain${NC}"
 echo ""
 divider
 echo ""

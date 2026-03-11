@@ -582,12 +582,13 @@ fi
 # --- 02-Areas ---
 for area in health finances career home; do
     mkd "$VAULT_ROOT/02-Areas/$area"
+    area_title="$(echo "$area" | tr '[:lower:]' '[:upper:]' | cut -c1)$(echo "$area" | cut -c2-)"
     mkf "$VAULT_ROOT/02-Areas/$area/index.md" "---
 tags: [area]
 area: $area
 ---
 
-# ${area^}
+# $area_title
 
 ## Standard
 What does \"good enough\" look like here?
