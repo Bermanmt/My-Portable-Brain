@@ -181,7 +181,7 @@ mkf() {
 today=$(date +%Y-%m-%d)
 year=$(date +%Y)
 month=$(date +%Y-%m)
-quarter="Q$(( ($(date +%-m) - 1) / 3 + 1 ))"
+quarter="Q$(( (10#$(date +%m) - 1) / 3 + 1 ))"
 week=$(date +%Y-W%V)
 
 # =============================================================================
@@ -1049,13 +1049,13 @@ DAILY=\"\$VAULT/07-Systems/goals/daily/\$DATE.md\"
 TEMPLATE=\"\$VAULT/07-Systems/goals/daily/_template.md\"
 LOG=\"\$AGENT/cron/logs/\$DATE-daily-briefing.log\"
 
-[ ! -f \"\$DAILY\" ] && cp \"\$TEMPLATE\" \"\$DAILY\" && sed -i '' \"s/YYYY-MM-DD/\$DATE/g\" \"\$DAILY\"
+[ ! -f \"\$DAILY\" ] && cp \"\$TEMPLATE\" \"\$DAILY\" && sed \"s/YYYY-MM-DD/\$DATE/g\" \"\$DAILY\" > \"\$DAILY.tmp\" && mv \"\$DAILY.tmp\" \"\$DAILY\"
 
 SYSTEM=\$(cat \"\$AGENT/workspace/AGENTS.md\"; echo; cat \"\$AGENT/workspace/SOUL.md\"; echo; cat \"\$AGENT/workspace/USER.md\")
 TASK=\$(cat \"\$AGENT/cron/prompts/daily-briefing.md\")
 
 echo \"[\$(date)] daily-briefing start\" >> \"\$LOG\"
-claude --system \"\$SYSTEM\" --message \"\$TASK\" >> \"\$LOG\" 2>&1
+claude --system-prompt \"\$SYSTEM\" -p \"\$TASK\" >> \"\$LOG\" 2>&1
 echo \"[\$(date)] done\" >> \"\$LOG\"
 "
 
@@ -1069,7 +1069,7 @@ SYSTEM=\$(cat \"\$AGENT/workspace/AGENTS.md\")
 TASK=\$(cat \"\$AGENT/cron/prompts/daily-closing.md\")
 
 echo \"[\$(date)] daily-closing start\" >> \"\$LOG\"
-claude --system \"\$SYSTEM\" --message \"\$TASK\" >> \"\$LOG\" 2>&1
+claude --system-prompt \"\$SYSTEM\" -p \"\$TASK\" >> \"\$LOG\" 2>&1
 echo \"[\$(date)] done\" >> \"\$LOG\"
 "
 
@@ -1083,7 +1083,7 @@ SYSTEM=\$(cat \"\$AGENT/subagents/inbox-processor/AGENT.md\")
 TASK=\$(cat \"\$AGENT/cron/prompts/inbox-sweep.md\")
 
 echo \"[\$(date)] inbox-sweep start\" >> \"\$LOG\"
-claude --system \"\$SYSTEM\" --message \"\$TASK\" >> \"\$LOG\" 2>&1
+claude --system-prompt \"\$SYSTEM\" -p \"\$TASK\" >> \"\$LOG\" 2>&1
 echo \"[\$(date)] done\" >> \"\$LOG\"
 "
 
@@ -1097,7 +1097,7 @@ SYSTEM=\$(cat \"\$AGENT/workspace/AGENTS.md\")
 TASK=\$(cat \"\$AGENT/cron/prompts/weekly-review.md\")
 
 echo \"[\$(date)] weekly-review start\" >> \"\$LOG\"
-claude --system \"\$SYSTEM\" --message \"\$TASK\" >> \"\$LOG\" 2>&1
+claude --system-prompt \"\$SYSTEM\" -p \"\$TASK\" >> \"\$LOG\" 2>&1
 echo \"[\$(date)] done\" >> \"\$LOG\"
 "
 
@@ -1176,9 +1176,9 @@ echo \"Installing Brain vault jobs for ${USER_NAME}...\"
 for plist in \"\$PLIST_DIR\"/*.plist; do
     filename=\$(basename \"\$plist\")
     label=\${filename%.plist}
-    launchctl unload \"\$LAUNCH_AGENTS/\$filename\" 2>/dev/null || true
+    launchctl bootout gui/\$(id -u) \"\$LAUNCH_AGENTS/\$filename\" 2>/dev/null || true
     cp \"\$plist\" \"\$LAUNCH_AGENTS/\$filename\"
-    launchctl load \"\$LAUNCH_AGENTS/\$filename\"
+    launchctl bootstrap gui/\$(id -u) \"\$LAUNCH_AGENTS/\$filename\"
     echo \"  ✓ \$label\"
 done
 echo \"Done.\"
@@ -1354,10 +1354,7 @@ parent: [[$year-$quarter]]
 - [ ]
 
 ## Daily Logs
-$(for i in 0 1 2 3 4; do
-    d=$(date -v+${i}d -v-$(date +%u)d +%Y-%m-%d 2>/dev/null || date -d "last monday + $i days" +%Y-%m-%d 2>/dev/null || echo "")
-    [ -n "$d" ] && echo "[[${d}]]"
-done | tr '\n' ' ')
+$(_e=$(date +%s); _w=$(date +%u); _m=$(( _e - (_w-1)*86400 )); for i in 0 1 2 3 4; do t=$(( _m + i*86400 )); d=$(date -r $t +%Y-%m-%d 2>/dev/null || date -d "@$t" +%Y-%m-%d 2>/dev/null || echo ""); [ -n "$d" ] && echo "[[${d}]]"; done | tr '\n' ' ')
 
 ## Friday Review
 **What went well?**
@@ -1609,7 +1606,7 @@ if [ "$ACTIVATE_CRON" = true ]; then
     for plist in "$PLIST_DIR"/*.plist; do
         fname=$(basename "$plist")
         cp "$plist" "$LAUNCH_AGENTS/$fname"
-        launchctl load "$LAUNCH_AGENTS/$fname" 2>/dev/null && ACTIVATED=$((ACTIVATED + 1)) || true
+        launchctl bootstrap gui/$(id -u) "$LAUNCH_AGENTS/$fname" 2>/dev/null && ACTIVATED=$((ACTIVATED + 1)) || true
     done
     success "Cron jobs activated ($ACTIVATED jobs)"
 fi
