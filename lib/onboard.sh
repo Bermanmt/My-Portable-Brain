@@ -1196,6 +1196,78 @@ mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.weekly-review.plist" "<?xml ver
     <key>RunAtLoad</key><false/>
 </dict></plist>"
 
+mkf "$VAULT_ROOT/06-Agent/cron/jobs/daily-backup.sh" "#!/bin/bash
+VAULT=\"$VAULT_ROOT\"
+LOG=\"\$VAULT/06-Agent/cron/logs/\$(date +%Y-%m-%d)-daily-backup.log\"
+
+echo \"[\$(date)] daily-backup start\" >> \"\$LOG\"
+cd \"\$VAULT\" && git add -A
+if git diff --cached --quiet; then
+  echo \"[\$(date)] nothing to commit\" >> \"\$LOG\"
+else
+  git commit -m \"daily backup \$(date +%Y-%m-%d)\" >> \"\$LOG\" 2>&1
+  echo \"[\$(date)] committed\" >> \"\$LOG\"
+fi
+echo \"[\$(date)] done\" >> \"\$LOG\"
+"
+
+mkf "$VAULT_ROOT/06-Agent/cron/jobs/weekly-tag.sh" "#!/bin/bash
+VAULT=\"$VAULT_ROOT\"
+LOG=\"\$VAULT/06-Agent/cron/logs/\$(date +%Y-%m-%d)-weekly-tag.log\"
+TAG=\$(date +%Y-W%V)
+
+echo \"[\$(date)] weekly-tag start — \$TAG\" >> \"\$LOG\"
+cd \"\$VAULT\"
+if git rev-parse \"\$TAG\" >/dev/null 2>&1; then
+  echo \"[\$(date)] tag \$TAG already exists, skipping\" >> \"\$LOG\"
+else
+  git tag \"\$TAG\" >> \"\$LOG\" 2>&1
+  echo \"[\$(date)] tagged \$TAG\" >> \"\$LOG\"
+fi
+echo \"[\$(date)] done\" >> \"\$LOG\"
+"
+
+chmod +x "$VAULT_ROOT/06-Agent/cron/jobs/daily-backup.sh" "$VAULT_ROOT/06-Agent/cron/jobs/weekly-tag.sh"
+
+mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.daily-backup.plist" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\"><dict>
+    <key>Label</key><string>com.brain.daily-backup</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>$VAULT_ROOT/06-Agent/cron/jobs/daily-backup.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>23</integer>
+        <key>Minute</key><integer>0</integer>
+    </dict>
+    <key>StandardOutPath</key><string>$VAULT_ROOT/06-Agent/cron/logs/daily-backup.log</string>
+    <key>StandardErrorPath</key><string>$VAULT_ROOT/06-Agent/cron/logs/daily-backup-error.log</string>
+    <key>RunAtLoad</key><false/>
+</dict></plist>"
+
+mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.weekly-tag.plist" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\"><dict>
+    <key>Label</key><string>com.brain.weekly-tag</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>$VAULT_ROOT/06-Agent/cron/jobs/weekly-tag.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key><integer>6</integer>
+        <key>Hour</key><integer>1</integer>
+        <key>Minute</key><integer>0</integer>
+    </dict>
+    <key>StandardOutPath</key><string>$VAULT_ROOT/06-Agent/cron/logs/weekly-tag.log</string>
+    <key>StandardErrorPath</key><string>$VAULT_ROOT/06-Agent/cron/logs/weekly-tag-error.log</string>
+    <key>RunAtLoad</key><false/>
+</dict></plist>"
+
 mkf "$VAULT_ROOT/06-Agent/cron/install-jobs.sh" "#!/bin/bash
 # Install all launchd jobs
 PLIST_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)/launchd\"
