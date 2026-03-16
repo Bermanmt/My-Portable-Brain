@@ -36,6 +36,7 @@ while [[ $# -gt 0 ]]; do
         --dry-run)   DRY_RUN=true ;;
         --vault)     PRESET_VAULT="$2"; shift ;;
         --tier)      PRESET_TIER="$2"; shift ;;
+        --minimal)   PRESET_TIER="3" ;;
     esac
     shift
 done
@@ -122,23 +123,27 @@ echo -e "  ${BOLD}Tier 2 — Full${NC}"
 echo -e "  ${DIM}Complete vault with all systems pre-built.${NC}"
 echo -e "  ${DIM}Best if you're ready to use everything from day one.${NC}"
 echo ""
+echo -e "  ${BOLD}Tier 3 — Minimal${NC}"
+echo -e "  ${DIM}Core vault only. Essential files + one cron job.${NC}"
+echo -e "  ${DIM}Best if you want to try the system first.${NC}"
+echo ""
 
 if [ -n "$PRESET_TIER" ]; then
     TIER="$PRESET_TIER"
     info "Using tier $TIER (from --tier flag)"
 else
-    echo -ne "  ${BOLD}Which tier?${NC} ${DIM}[1/2, default: 2]${NC}: "
+    echo -ne "  ${BOLD}Which tier?${NC} ${DIM}[1/2/3, default: 2]${NC}: "
     read -r input
     TIER="${input:-2}"
 fi
 
-if [ "$TIER" != "1" ] && [ "$TIER" != "2" ]; then
+if [ "$TIER" != "1" ] && [ "$TIER" != "2" ] && [ "$TIER" != "3" ]; then
     warn "Invalid selection — defaulting to Tier 2."
     TIER="2"
 fi
 
 echo ""
-success "Tier $TIER — $([ "$TIER" = "1" ] && echo 'Lean' || echo 'Full')"
+success "Tier $TIER — $([ "$TIER" = "1" ] && echo 'Lean' || [ "$TIER" = "2" ] && echo 'Full' || echo 'Minimal')"
 
 # =============================================================================
 # RUN ONBOARDING
@@ -184,7 +189,7 @@ echo ""
 echo -e "  ${BOLD}${GREEN}🧠 Your vault is ready.${NC}"
 echo ""
 echo -e "  ${BOLD}Location:${NC}  $VAULT_ROOT"
-echo -e "  ${BOLD}Tier:${NC}      $TIER — $([ "$TIER" = "1" ] && echo 'Lean' || echo 'Full')"
+echo -e "  ${BOLD}Tier:${NC}      $TIER — $([ "$TIER" = "1" ] && echo 'Lean' || [ "$TIER" = "2" ] && echo 'Full' || echo 'Minimal')"
 echo ""
 divider
 echo ""

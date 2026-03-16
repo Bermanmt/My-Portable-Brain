@@ -184,6 +184,10 @@ month=$(date +%Y-%m)
 quarter="Q$(( (10#$(date +%m) - 1) / 3 + 1 ))"
 week=$(date +%Y-W%V)
 
+VAULT_TIER="${BRAIN_TIER:-2}"
+MINIMAL=false
+[ "$VAULT_TIER" = "3" ] && MINIMAL=true
+
 # =============================================================================
 # WELCOME
 # =============================================================================
@@ -512,7 +516,7 @@ mkf "$VAULT_ROOT/00-Inbox/links.md" "# Links to Process
 | Date | URL | Context | → Destination |
 |------|-----|---------|---------------|
 "
-[ "${VAULT_TIER:-2}" = "1" ] && stamp_template \
+[ "$VAULT_TIER" = "1" ] && stamp_template \
     "$TEMPLATES_DIR/learn/00-inbox.md" \
     "$VAULT_ROOT/00-Inbox/LEARN.md"
 success "00-Inbox/"
@@ -575,10 +579,11 @@ $PROJECT_DONE_WHEN
 else
     success "01-Projects/"
 fi
-[ "${VAULT_TIER:-2}" = "1" ] && stamp_template \
+[ "$VAULT_TIER" = "1" ] && stamp_template \
     "$TEMPLATES_DIR/learn/01-projects.md" \
     "$VAULT_ROOT/01-Projects/LEARN.md"
 
+if [ "$MINIMAL" = false ]; then
 # --- 02-Areas ---
 for area in health finances career home; do
     mkd "$VAULT_ROOT/02-Areas/$area"
@@ -601,10 +606,12 @@ What does \"good enough\" look like here?
 "
 done
 success "02-Areas/"
-[ "${VAULT_TIER:-2}" = "1" ] && stamp_template \
+[ "$VAULT_TIER" = "1" ] && stamp_template \
     "$TEMPLATES_DIR/learn/02-areas.md" \
     "$VAULT_ROOT/02-Areas/LEARN.md"
+fi
 
+if [ "$MINIMAL" = false ]; then
 # --- 03-Resources ---
 for topic in programming business people reading; do
     mkd "$VAULT_ROOT/03-Resources/$topic"
@@ -620,10 +627,12 @@ Evergreen reference. Link here from projects and daily notes.
 - [[reading/]]
 "
 success "03-Resources/"
-[ "${VAULT_TIER:-2}" = "1" ] && stamp_template \
+[ "$VAULT_TIER" = "1" ] && stamp_template \
     "$TEMPLATES_DIR/learn/03-resources.md" \
     "$VAULT_ROOT/03-Resources/LEARN.md"
+fi
 
+if [ "$MINIMAL" = false ]; then
 # --- 04-Archive ---
 mkd "$VAULT_ROOT/04-Archive/projects"
 mkd "$VAULT_ROOT/04-Archive/areas"
@@ -633,6 +642,7 @@ Never delete — archive instead.
 Agent never moves files here without ${USER_NAME}'s confirmation.
 "
 success "04-Archive/"
+fi
 
 # --- 05-Meta ---
 mkd "$VAULT_ROOT/05-Meta/review"
@@ -818,7 +828,7 @@ $([ "$ADD_PROJECT" = true ] && echo "- First project: ${PROJECT_NAME}")
 (${AGENT_NAME} writes session observations here)
 "
 success "06-Agent/workspace/"
-[ "${VAULT_TIER:-2}" = "1" ] && stamp_template \
+[ "$VAULT_TIER" = "1" ] && stamp_template \
     "$TEMPLATES_DIR/learn/06-agent.md" \
     "$VAULT_ROOT/06-Agent/LEARN.md"
 
@@ -843,6 +853,7 @@ Process 00-Inbox and suggest filing destinations for ${USER_NAME}.
 List of items, destinations, and decisions needed.
 "
 
+if [ "$MINIMAL" = false ]; then
 mkd "$VAULT_ROOT/06-Agent/subagents/crm-manager"
 mkf "$VAULT_ROOT/06-Agent/subagents/crm-manager/AGENT.md" "# CRM Manager
 
@@ -893,8 +904,10 @@ Draft documents, emails, summaries on request.
 Follow workspace/skills/writing/SKILL.md
 Always present draft before writing to file.
 "
+fi
 success "06-Agent/subagents/"
 
+if [ "$MINIMAL" = false ]; then
 # --- Skills ---
 mkf "$VAULT_ROOT/06-Agent/workspace/skills/research/SKILL.md" "# Research Skill
 
@@ -934,6 +947,7 @@ ${USER_STACK}
 - Confirm before executing anything
 - Always show diff before editing existing files
 "
+fi
 
 # --- Cron ---
 mkd "$VAULT_ROOT/06-Agent/cron/launchd"
@@ -941,6 +955,7 @@ mkd "$VAULT_ROOT/06-Agent/cron/jobs"
 mkd "$VAULT_ROOT/06-Agent/cron/prompts"
 mkd "$VAULT_ROOT/06-Agent/cron/logs"
 
+if [ "$MINIMAL" = false ]; then
 mkf "$VAULT_ROOT/06-Agent/cron/README.md" "# Scheduled Jobs
 
 | Job | Schedule | Output |
@@ -957,6 +972,7 @@ mkf "$VAULT_ROOT/06-Agent/cron/README.md" "# Scheduled Jobs
 ## Logs
 Each job appends to logs/YYYY-MM-DD-jobname.log
 "
+fi
 
 # Cron prompts
 mkf "$VAULT_ROOT/06-Agent/cron/prompts/daily-briefing.md" "You are ${AGENT_NAME}, running the daily briefing for ${USER_NAME}.
@@ -1085,6 +1101,7 @@ run_llm \"\$SYSTEM\" \"\$TASK\" >> \"\$LOG\" 2>&1
 echo \"[\$(date)] done\" >> \"\$LOG\"
 "
 
+if [ "$MINIMAL" = false ]; then
 mkf "$VAULT_ROOT/06-Agent/cron/jobs/daily-closing.sh" "#!/bin/bash
 VAULT=\"$VAULT_ROOT\"
 AGENT=\"\$VAULT/06-Agent\"
@@ -1129,6 +1146,7 @@ echo \"[\$(date)] weekly-review start\" >> \"\$LOG\"
 run_llm \"\$SYSTEM\" \"\$TASK\" >> \"\$LOG\" 2>&1
 echo \"[\$(date)] done\" >> \"\$LOG\"
 "
+fi
 
 chmod +x "$VAULT_ROOT/06-Agent/cron/jobs/"*.sh
 
@@ -1157,6 +1175,7 @@ mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.daily-briefing.plist" "<?xml ve
     <key>RunAtLoad</key><false/>
 </dict></plist>"
 
+if [ "$MINIMAL" = false ]; then
 mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.daily-closing.plist" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
 <plist version=\"1.0\"><dict>
@@ -1195,6 +1214,7 @@ mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.weekly-review.plist" "<?xml ver
     <key>StandardErrorPath</key><string>$VAULT_ROOT/06-Agent/cron/logs/weekly-review-error.log</string>
     <key>RunAtLoad</key><false/>
 </dict></plist>"
+fi
 
 mkf "$VAULT_ROOT/06-Agent/cron/jobs/daily-backup.sh" "#!/bin/bash
 VAULT=\"$VAULT_ROOT\"
@@ -1211,23 +1231,7 @@ fi
 echo \"[\$(date)] done\" >> \"\$LOG\"
 "
 
-mkf "$VAULT_ROOT/06-Agent/cron/jobs/weekly-tag.sh" "#!/bin/bash
-VAULT=\"$VAULT_ROOT\"
-LOG=\"\$VAULT/06-Agent/cron/logs/\$(date +%Y-%m-%d)-weekly-tag.log\"
-TAG=\$(date +%Y-W%V)
-
-echo \"[\$(date)] weekly-tag start — \$TAG\" >> \"\$LOG\"
-cd \"\$VAULT\"
-if git rev-parse \"\$TAG\" >/dev/null 2>&1; then
-  echo \"[\$(date)] tag \$TAG already exists, skipping\" >> \"\$LOG\"
-else
-  git tag \"\$TAG\" >> \"\$LOG\" 2>&1
-  echo \"[\$(date)] tagged \$TAG\" >> \"\$LOG\"
-fi
-echo \"[\$(date)] done\" >> \"\$LOG\"
-"
-
-chmod +x "$VAULT_ROOT/06-Agent/cron/jobs/daily-backup.sh" "$VAULT_ROOT/06-Agent/cron/jobs/weekly-tag.sh"
+chmod +x "$VAULT_ROOT/06-Agent/cron/jobs/daily-backup.sh"
 
 mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.daily-backup.plist" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
@@ -1248,6 +1252,25 @@ mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.daily-backup.plist" "<?xml vers
     <key>RunAtLoad</key><false/>
 </dict></plist>"
 
+if [ "$MINIMAL" = false ]; then
+mkf "$VAULT_ROOT/06-Agent/cron/jobs/weekly-tag.sh" "#!/bin/bash
+VAULT=\"$VAULT_ROOT\"
+LOG=\"\$VAULT/06-Agent/cron/logs/\$(date +%Y-%m-%d)-weekly-tag.log\"
+TAG=\$(date +%Y-W%V)
+
+echo \"[\$(date)] weekly-tag start — \$TAG\" >> \"\$LOG\"
+cd \"\$VAULT\"
+if git rev-parse \"\$TAG\" >/dev/null 2>&1; then
+  echo \"[\$(date)] tag \$TAG already exists, skipping\" >> \"\$LOG\"
+else
+  git tag \"\$TAG\" >> \"\$LOG\" 2>&1
+  echo \"[\$(date)] tagged \$TAG\" >> \"\$LOG\"
+fi
+echo \"[\$(date)] done\" >> \"\$LOG\"
+"
+
+chmod +x "$VAULT_ROOT/06-Agent/cron/jobs/weekly-tag.sh"
+
 mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.weekly-tag.plist" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
 <plist version=\"1.0\"><dict>
@@ -1267,6 +1290,7 @@ mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.weekly-tag.plist" "<?xml versio
     <key>StandardErrorPath</key><string>$VAULT_ROOT/06-Agent/cron/logs/weekly-tag-error.log</string>
     <key>RunAtLoad</key><false/>
 </dict></plist>"
+fi
 
 mkf "$VAULT_ROOT/06-Agent/cron/install-jobs.sh" "#!/bin/bash
 # Install all launchd jobs
@@ -1340,6 +1364,7 @@ chmod +x "$VAULT_ROOT/06-Agent/brain.sh"
 
 success "06-Agent/cron/ + sessions/"
 
+if [ "$MINIMAL" = false ]; then
 # --- 07-Systems CRM ---
 mkd "$VAULT_ROOT/07-Systems/CRM/contacts"
 mkd "$VAULT_ROOT/07-Systems/CRM/pipeline"
@@ -1422,12 +1447,15 @@ month: $month
 
 ## Notes
 "
+fi
 
 # --- 07-Systems Goals ---
+mkd "$VAULT_ROOT/07-Systems/goals/daily"
+
+if [ "$MINIMAL" = false ]; then
 mkd "$VAULT_ROOT/07-Systems/goals/yearly"
 mkd "$VAULT_ROOT/07-Systems/goals/quarterly"
 mkd "$VAULT_ROOT/07-Systems/goals/weekly"
-mkd "$VAULT_ROOT/07-Systems/goals/daily"
 mkd "$VAULT_ROOT/07-Systems/goals/templates"
 
 mkf "$VAULT_ROOT/07-Systems/goals/_index.md" "# Goals
@@ -1515,6 +1543,7 @@ $(_e=$(date +%s); _w=$(date +%u); _m=$(( _e - (_w-1)*86400 )); for i in 0 1 2 3 
 
 **Carries forward:**
 "
+fi
 
 # Daily note template
 mkf "$VAULT_ROOT/07-Systems/goals/daily/_template.md" "---
@@ -1626,6 +1655,7 @@ Grateful for:
 success "07-Systems/"
 
 # --- 08-CoreSystem ---
+if [ "$MINIMAL" = false ]; then
 mkf "$VAULT_ROOT/08-CoreSystem/README.md" "# ${USER_NAME}'s Core System
 
 The foundation. Everything in this vault serves what's defined here.
@@ -1642,6 +1672,7 @@ ${AGENT_NAME} reads these before making suggestions about time or priorities.
 ## Review
 Roles + Principles: quarterly | Misogi: yearly | Process: when something breaks
 "
+fi
 
 mkf "$VAULT_ROOT/08-CoreSystem/roles.md" "# ${USER_NAME}'s Roles
 
@@ -1672,6 +1703,7 @@ ${WORK_PRINCIPLE}
 ## On Money
 "
 
+if [ "$MINIMAL" = false ]; then
 mkf "$VAULT_ROOT/08-CoreSystem/my-process.md" "# My Process
 
 How ${USER_NAME} works. How decisions get made. The operating rhythm.
@@ -1721,8 +1753,9 @@ What home feels like and stands for.
 
 ## Hospitality
 "
+fi
 success "08-CoreSystem/"
-[ "${VAULT_TIER:-2}" = "1" ] && stamp_template \
+[ "$VAULT_TIER" = "1" ] && stamp_template \
     "$TEMPLATES_DIR/learn/08-coresystem.md" \
     "$VAULT_ROOT/08-CoreSystem/LEARN.md"
 
