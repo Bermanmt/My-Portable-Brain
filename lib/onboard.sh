@@ -1040,6 +1040,31 @@ using the quarterly template. Pre-fill based on yearly goals and roles.
 Mark sections clearly for ${USER_NAME} to complete.
 "
 
+# LLM config
+mkd "$VAULT_ROOT/06-Agent/config"
+mkf "$VAULT_ROOT/06-Agent/config/llm.conf" "# Brain Vault — LLM provider config
+# All cron job scripts source this file.
+#
+# To switch model:        LLM_MODEL=claude-opus-4-6
+# To add flags:           LLM_EXTRA_FLAGS=--dangerously-skip-permissions
+# To switch provider:     LLM_CMD=<other-cli> and adjust LLM_EXTRA_FLAGS
+
+LLM_CMD=claude
+LLM_MODEL=
+LLM_EXTRA_FLAGS=
+
+run_llm() {
+  local system=\"\$1\" task=\"\$2\"
+  local cmd_args=(--system-prompt \"\$system\" -p \"\$task\")
+  [ -n \"\$LLM_MODEL\" ] && cmd_args+=(--model \"\$LLM_MODEL\")
+  if [ -n \"\$LLM_EXTRA_FLAGS\" ]; then
+    read -ra _extra <<< \"\$LLM_EXTRA_FLAGS\"
+    cmd_args+=(\"\${_extra[@]}\")
+  fi
+  \$LLM_CMD \"\${cmd_args[@]}\"
+}
+"
+
 # Job scripts
 mkf "$VAULT_ROOT/06-Agent/cron/jobs/daily-briefing.sh" "#!/bin/bash
 VAULT=\"$VAULT_ROOT\"
@@ -1048,6 +1073,7 @@ DATE=\$(date +%Y-%m-%d)
 DAILY=\"\$VAULT/07-Systems/goals/daily/\$DATE.md\"
 TEMPLATE=\"\$VAULT/07-Systems/goals/daily/_template.md\"
 LOG=\"\$AGENT/cron/logs/\$DATE-daily-briefing.log\"
+source \"\$AGENT/config/llm.conf\"
 
 [ ! -f \"\$DAILY\" ] && cp \"\$TEMPLATE\" \"\$DAILY\" && sed \"s/YYYY-MM-DD/\$DATE/g\" \"\$DAILY\" > \"\$DAILY.tmp\" && mv \"\$DAILY.tmp\" \"\$DAILY\"
 
@@ -1055,7 +1081,7 @@ SYSTEM=\$(cat \"\$AGENT/workspace/AGENTS.md\"; echo; cat \"\$AGENT/workspace/SOU
 TASK=\$(cat \"\$AGENT/cron/prompts/daily-briefing.md\")
 
 echo \"[\$(date)] daily-briefing start\" >> \"\$LOG\"
-claude --system-prompt \"\$SYSTEM\" -p \"\$TASK\" >> \"\$LOG\" 2>&1
+run_llm \"\$SYSTEM\" \"\$TASK\" >> \"\$LOG\" 2>&1
 echo \"[\$(date)] done\" >> \"\$LOG\"
 "
 
@@ -1064,12 +1090,13 @@ VAULT=\"$VAULT_ROOT\"
 AGENT=\"\$VAULT/06-Agent\"
 DATE=\$(date +%Y-%m-%d)
 LOG=\"\$AGENT/cron/logs/\$DATE-daily-closing.log\"
+source \"\$AGENT/config/llm.conf\"
 
 SYSTEM=\$(cat \"\$AGENT/workspace/AGENTS.md\")
 TASK=\$(cat \"\$AGENT/cron/prompts/daily-closing.md\")
 
 echo \"[\$(date)] daily-closing start\" >> \"\$LOG\"
-claude --system-prompt \"\$SYSTEM\" -p \"\$TASK\" >> \"\$LOG\" 2>&1
+run_llm \"\$SYSTEM\" \"\$TASK\" >> \"\$LOG\" 2>&1
 echo \"[\$(date)] done\" >> \"\$LOG\"
 "
 
@@ -1078,12 +1105,13 @@ VAULT=\"$VAULT_ROOT\"
 AGENT=\"\$VAULT/06-Agent\"
 DATE=\$(date +%Y-%m-%d)
 LOG=\"\$AGENT/cron/logs/\$DATE-inbox-sweep.log\"
+source \"\$AGENT/config/llm.conf\"
 
 SYSTEM=\$(cat \"\$AGENT/subagents/inbox-processor/AGENT.md\")
 TASK=\$(cat \"\$AGENT/cron/prompts/inbox-sweep.md\")
 
 echo \"[\$(date)] inbox-sweep start\" >> \"\$LOG\"
-claude --system-prompt \"\$SYSTEM\" -p \"\$TASK\" >> \"\$LOG\" 2>&1
+run_llm \"\$SYSTEM\" \"\$TASK\" >> \"\$LOG\" 2>&1
 echo \"[\$(date)] done\" >> \"\$LOG\"
 "
 
@@ -1092,12 +1120,13 @@ VAULT=\"$VAULT_ROOT\"
 AGENT=\"\$VAULT/06-Agent\"
 DATE=\$(date +%Y-%m-%d)
 LOG=\"\$AGENT/cron/logs/\$DATE-weekly-review.log\"
+source \"\$AGENT/config/llm.conf\"
 
 SYSTEM=\$(cat \"\$AGENT/workspace/AGENTS.md\")
 TASK=\$(cat \"\$AGENT/cron/prompts/weekly-review.md\")
 
 echo \"[\$(date)] weekly-review start\" >> \"\$LOG\"
-claude --system-prompt \"\$SYSTEM\" -p \"\$TASK\" >> \"\$LOG\" 2>&1
+run_llm \"\$SYSTEM\" \"\$TASK\" >> \"\$LOG\" 2>&1
 echo \"[\$(date)] done\" >> \"\$LOG\"
 "
 
