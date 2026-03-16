@@ -1287,6 +1287,57 @@ echo \"Done.\"
 chmod +x "$VAULT_ROOT/06-Agent/cron/install-jobs.sh"
 
 mkd "$VAULT_ROOT/06-Agent/sessions"
+
+mkf "$VAULT_ROOT/06-Agent/brain.sh" "#!/bin/bash
+# Brain CLI — quick access to vault operations
+# Usage: brain <command>
+#   inbox      Run inbox sweep
+#   briefing   Run daily briefing manually
+#   backup     Commit vault changes to git
+#   cron       Install/refresh all scheduled jobs
+#   health     Run vault health check
+
+VAULT=\"$VAULT_ROOT\"
+AGENT=\"\$VAULT/06-Agent\"
+CRON=\"\$AGENT/cron/jobs\"
+cmd=\"\${1:-help}\"
+
+case \"\$cmd\" in
+  inbox)
+    bash \"\$CRON/inbox-sweep.sh\"
+    ;;
+  briefing)
+    bash \"\$CRON/daily-briefing.sh\"
+    ;;
+  backup)
+    bash \"\$CRON/daily-backup.sh\"
+    ;;
+  cron)
+    bash \"\$AGENT/cron/install-jobs.sh\"
+    ;;
+  health)
+    HEALTH=\"\$VAULT/05-Meta/vault-health.sh\"
+    if [ -f \"\$HEALTH\" ]; then
+      bash \"\$HEALTH\"
+    else
+      echo \"vault-health.sh not yet installed — coming in v1.0\"
+    fi
+    ;;
+  help|*)
+    echo \"\"
+    echo \"  brain <command>\"
+    echo \"\"
+    echo \"  inbox      Run inbox sweep\"
+    echo \"  briefing   Run daily briefing manually\"
+    echo \"  backup     Commit vault changes to git\"
+    echo \"  cron       Install/refresh all scheduled jobs\"
+    echo \"  health     Run vault health check\"
+    echo \"\"
+    ;;
+esac
+"
+chmod +x "$VAULT_ROOT/06-Agent/brain.sh"
+
 success "06-Agent/cron/ + sessions/"
 
 # --- 07-Systems CRM ---
@@ -1710,6 +1761,19 @@ if [ "$ACTIVATE_CRON" = true ]; then
         launchctl bootstrap gui/$(id -u) "$LAUNCH_AGENTS/$fname" 2>/dev/null && ACTIVATED=$((ACTIVATED + 1)) || true
     done
     success "Cron jobs activated ($ACTIVATED jobs)"
+fi
+
+# --- Symlink brain CLI ---
+echo ""
+echo -ne "  ${BOLD}Symlink 'brain' to /usr/local/bin?${NC} ${DIM}Type 'brain inbox' from anywhere [y/N]${NC}: "
+read -r BRAIN_LINK
+if [[ "$BRAIN_LINK" =~ ^[Yy]$ ]]; then
+    if ln -sf "$VAULT_ROOT/06-Agent/brain.sh" /usr/local/bin/brain 2>/dev/null; then
+        success "'brain' command available — try: brain help"
+    else
+        warn "Could not write to /usr/local/bin — try:"
+        warn "  sudo ln -sf $VAULT_ROOT/06-Agent/brain.sh /usr/local/bin/brain"
+    fi
 fi
 
 # =============================================================================
