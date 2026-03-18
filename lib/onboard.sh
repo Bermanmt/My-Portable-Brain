@@ -400,8 +400,12 @@ echo ""
 echo -e "  Cron jobs wake the agent on a schedule — daily briefings,"
 echo -e "  inbox sweeps, weekly review drafts."
 echo ""
-warn "Requires the 'claude' CLI to be installed and authenticated."
-hint "You can activate these later with: bash 06-Agent/cron/install-jobs.sh"
+echo -e "  Two types of jobs:"
+echo -e "  ${GREEN}✓${NC} vault-health  — pure bash, no AI, works without claude CLI"
+echo -e "  ${YELLOW}⚡${NC} briefing/review — require claude CLI installed and authenticated"
+echo ""
+warn "AI jobs will silently fail if claude CLI is not set up. Check logs at 06-Agent/cron/logs/"
+hint "You can activate these later with: brain cron"
 echo ""
 
 ask_yn "Activate cron jobs now?" "n" ACTIVATE_CRON
@@ -505,6 +509,15 @@ success "CLAUDE.md"
 
 # --- 00-Inbox ---
 mkd "$VAULT_ROOT/00-Inbox/unsorted"
+mkf "$VAULT_ROOT/00-Inbox/README.md" "# 00-Inbox
+
+Everything new lands here first. Never file directly into Projects or Areas.
+Sort during your weekly review.
+
+- [[quick-notes]] — one-line captures
+- [[links]] — URLs to process
+- [[unsorted/]] — drop files here if you don't know where they go
+"
 mkf "$VAULT_ROOT/00-Inbox/quick-notes.md" "# Quick Notes
 
 Capture anything here. One line per idea. Sort during weekly review.
@@ -523,6 +536,15 @@ success "00-Inbox/"
 
 # --- 01-Projects ---
 mkd "$VAULT_ROOT/01-Projects"
+mkf "$VAULT_ROOT/01-Projects/README.md" "# 01-Projects
+
+Active work with a clear finish line.
+Each project lives in its own subfolder with a README, notes, and assets.
+
+Rule: if it has no finish line, it belongs in 02-Areas instead.
+
+Use [[_template]] to start a new project.
+"
 mkf "$VAULT_ROOT/01-Projects/_template.md" "---
 tags: [project]
 status: active
@@ -575,7 +597,11 @@ $PROJECT_DONE_WHEN
     mkf "$VAULT_ROOT/01-Projects/$PROJECT_SLUG/notes.md" "# Notes — $PROJECT_NAME
 
 "
-    success "01-Projects/$PROJECT_SLUG/"
+    success "01-Projects/$PROJECT_SLUG/README.md"
+    hint "Find it at: $VAULT_ROOT/01-Projects/$PROJECT_SLUG/"
+elif [ "$ADD_PROJECT" = true ] && [ -z "$PROJECT_NAME" ]; then
+    warn "Project name was blank — skipped. Add manually to 01-Projects/"
+    success "01-Projects/"
 else
     success "01-Projects/"
 fi
@@ -692,6 +718,19 @@ project · area · resource · crm · contact · planning · daily · weekly
 success "05-Meta/"
 
 # --- 06-Agent workspace ---
+mkf "$VAULT_ROOT/06-Agent/README.md" "# 06-Agent
+
+${AGENT_NAME}'s runtime — memory, automation, and operating instructions.
+
+| Path | Purpose |
+|------|---------|
+| workspace/ | Agent identity, user profile, long-term memory |
+| subagents/ | Specialized agents (inbox, CRM, researcher, writer) |
+| cron/ | Scheduled jobs, prompts, logs |
+| brain.sh | CLI — run 'brain help' for commands |
+
+Never put personal notes here. This folder belongs to ${AGENT_NAME}.
+"
 mkd "$VAULT_ROOT/06-Agent/workspace/memory"
 mkd "$VAULT_ROOT/06-Agent/workspace/skills/research"
 mkd "$VAULT_ROOT/06-Agent/workspace/skills/writing"
@@ -965,6 +1004,7 @@ mkf "$VAULT_ROOT/06-Agent/cron/README.md" "# Scheduled Jobs
 | inbox-sweep | 10:00 weekdays | Inbox-processor subagent |
 | weekly-review | Friday 17:00 | Draft weekly review |
 | quarterly-checkin | 1st of quarter | Quarterly planning prompt |
+| vault-lint | Friday 16:00 | 05-Meta/vault-health.md |
 
 ## Activate
   bash $VAULT_ROOT/06-Agent/cron/install-jobs.sh
@@ -1292,6 +1332,128 @@ mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.weekly-tag.plist" "<?xml versio
 </dict></plist>"
 fi
 
+if [ "$MINIMAL" = false ]; then
+mkf "$VAULT_ROOT/05-Meta/vault-health.sh" "#!/bin/bash
+# vault-health.sh — Vault lint and health check
+# Output: 05-Meta/vault-health.md
+# Usage: bash vault-health.sh [--vault /path/to/vault]
+
+VAULT=\"$VAULT_ROOT\"
+while [ \$# -gt 0 ]; do
+  case \"\$1\" in --vault) VAULT=\"\$2\"; shift 2 ;; *) shift ;; esac
+done
+
+REPORT=\"\$VAULT/05-Meta/vault-health.md\"
+TODAY=\$(date +%Y-%m-%d)
+THRESHOLD=\${INBOX_THRESHOLD:-20}
+ISSUES=0
+
+{
+echo \"# Vault Health — \$TODAY\"
+echo \"\"
+echo \"| Check | Status | Detail |\"
+echo \"|-------|--------|--------|\"
+
+# 1. Stale projects (not modified in 30+ days)
+stale=\$(find \"\$VAULT/01-Projects\" -maxdepth 2 -name \"README.md\" 2>/dev/null | while IFS= read -r f; do
+  mtime=\$(stat -f %m \"\$f\" 2>/dev/null || stat -c %Y \"\$f\" 2>/dev/null || echo 0)
+  age=\$(( (\$(date +%s) - mtime) / 86400 ))
+  [ \"\$age\" -gt 30 ] && echo x
+done | wc -l | tr -d ' ')
+if [ \"\$stale\" -gt 0 ]; then
+  echo \"| STALE PROJECT | ⚠ \$stale | not touched in 30+ days |\"
+  ISSUES=\$((ISSUES + stale))
+else
+  echo \"| Stale projects | ✓ | all active |\"
+fi
+
+# 2. Inbox overflow
+inbox=\$(find \"\$VAULT/00-Inbox\" -type f -name \"*.md\" 2>/dev/null | wc -l | tr -d ' ')
+if [ \"\$inbox\" -gt \"\$THRESHOLD\" ]; then
+  echo \"| INBOX OVERFLOW | ⚠ \$inbox | threshold: \$THRESHOLD |\"
+  ISSUES=\$((ISSUES + 1))
+else
+  echo \"| Inbox count | ✓ | \$inbox items |\"
+fi
+
+# 3. Recent daily notes missing energy: frontmatter
+missing=\$(find \"\$VAULT/07-Systems/goals/daily\" -name \"*.md\" ! -name \"_template.md\" 2>/dev/null | sort -r | head -7 | while IFS= read -r f; do
+  grep -qi \"^energy:\" \"\$f\" 2>/dev/null || echo x
+done | wc -l | tr -d ' ')
+if [ \"\$missing\" -gt 0 ]; then
+  echo \"| MISSING ENERGY | ⚠ \$missing | recent daily notes missing energy: field |\"
+  ISSUES=\$((ISSUES + 1))
+else
+  echo \"| Energy frontmatter | ✓ | recent notes complete |\"
+fi
+
+# 4. CRM contacts with overdue next-action-date
+overdue=\$(find \"\$VAULT/07-Systems/CRM/contacts\" -name \"*.md\" 2>/dev/null | while IFS= read -r f; do
+  nad=\$(grep -m1 \"^next-action-date:\" \"\$f\" 2>/dev/null | awk '{print \$2}')
+  [ -n \"\$nad\" ] && [[ \"\$nad\" < \"\$TODAY\" ]] && echo x
+done | wc -l | tr -d ' ')
+if [ \"\$overdue\" -gt 0 ]; then
+  echo \"| CRM OVERDUE | ⚠ \$overdue | contacts need follow-up |\"
+  ISSUES=\$((ISSUES + overdue))
+else
+  echo \"| CRM follow-ups | ✓ | none overdue |\"
+fi
+
+# 5. Broken backlinks: [[link]] where target.md does not exist
+broken=\$(find \"\$VAULT\" -name \"*.md\" -not -path \"*/.obsidian/*\" 2>/dev/null | head -100 | while IFS= read -r f; do
+  grep -oh '\\[\\[[^]|#]*\\]\\]' \"\$f\" 2>/dev/null | sed 's/\\[\\[//;s/\\]\\]//' | grep -v '^http' | while IFS= read -r link; do
+    base=\$(basename \"\$link\")
+    find \"\$VAULT\" -name \"\${base}.md\" 2>/dev/null | grep -q . || echo x
+  done
+done | wc -l | tr -d ' ')
+if [ \"\$broken\" -gt 0 ]; then
+  echo \"| BROKEN LINK | ⚠ \$broken | run manually to inspect |\"
+  ISSUES=\$((ISSUES + broken))
+else
+  echo \"| Backlinks | ✓ | no broken links found |\"
+fi
+
+echo \"\"
+if [ \"\$ISSUES\" -gt 0 ]; then
+  echo \"> **\$ISSUES issue(s) found.** Review the table above.\"
+else
+  echo \"> **Vault is healthy.** No issues found.\"
+fi
+echo \"\"
+echo \"_Last run: \$(date)_\"
+} > \"\$REPORT\"
+
+cat \"\$REPORT\"
+[ \"\$ISSUES\" -gt 0 ] && exit 1 || exit 0
+"
+
+mkf "$VAULT_ROOT/06-Agent/cron/jobs/vault-lint.sh" "#!/bin/bash
+VAULT=\"$VAULT_ROOT\"
+AGENT=\"\$VAULT/06-Agent\"
+bash \"\$VAULT/05-Meta/vault-health.sh\" >> \"\$AGENT/cron/logs/vault-lint.log\" 2>&1
+"
+
+mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.vault-lint.plist" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\"><dict>
+    <key>Label</key><string>com.brain.vault-lint</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>$VAULT_ROOT/06-Agent/cron/jobs/vault-lint.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key><integer>5</integer>
+        <key>Hour</key><integer>16</integer>
+        <key>Minute</key><integer>0</integer>
+    </dict>
+    <key>StandardOutPath</key><string>$VAULT_ROOT/06-Agent/cron/logs/vault-lint.log</string>
+    <key>StandardErrorPath</key><string>$VAULT_ROOT/06-Agent/cron/logs/vault-lint-error.log</string>
+    <key>RunAtLoad</key><false/>
+</dict></plist>"
+fi
+
 mkf "$VAULT_ROOT/06-Agent/cron/install-jobs.sh" "#!/bin/bash
 # Install all launchd jobs
 PLIST_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)/launchd\"
@@ -1365,6 +1527,18 @@ chmod +x "$VAULT_ROOT/06-Agent/brain.sh"
 success "06-Agent/cron/ + sessions/"
 
 if [ "$MINIMAL" = false ]; then
+# --- 07-Systems ---
+mkf "$VAULT_ROOT/07-Systems/README.md" "# 07-Systems
+
+Operational systems — the recurring infrastructure of your life.
+
+| Path | Purpose |
+|------|---------|
+| CRM/ | People, relationships, follow-ups |
+| finances/ | Accounts, monthly snapshots |
+| goals/ | Daily, weekly, quarterly, yearly planning |
+"
+
 # --- 07-Systems CRM ---
 mkd "$VAULT_ROOT/07-Systems/CRM/contacts"
 mkd "$VAULT_ROOT/07-Systems/CRM/pipeline"
@@ -1786,14 +1960,21 @@ fi
 # --- Activate cron ---
 if [ "$ACTIVATE_CRON" = true ]; then
     LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
+    mkdir -p "$LAUNCH_AGENTS"
     PLIST_DIR="$VAULT_ROOT/06-Agent/cron/launchd"
     ACTIVATED=0
+    FAILED=0
     for plist in "$PLIST_DIR"/*.plist; do
         fname=$(basename "$plist")
         cp "$plist" "$LAUNCH_AGENTS/$fname"
-        launchctl bootstrap gui/$(id -u) "$LAUNCH_AGENTS/$fname" 2>/dev/null && ACTIVATED=$((ACTIVATED + 1)) || true
+        if launchctl bootstrap gui/$(id -u) "$LAUNCH_AGENTS/$fname" 2>/dev/null; then
+            ACTIVATED=$((ACTIVATED + 1))
+        else
+            FAILED=$((FAILED + 1))
+        fi
     done
-    success "Cron jobs activated ($ACTIVATED jobs)"
+    [ "$ACTIVATED" -gt 0 ] && success "Cron jobs activated ($ACTIVATED jobs)"
+    [ "$FAILED" -gt 0 ] && warn "$FAILED job(s) failed to load — run 'brain cron' after setup to retry"
 fi
 
 # --- Symlink brain CLI ---
