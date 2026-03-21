@@ -69,12 +69,21 @@ NC='\033[0m'
 # --- Parse flags ---
 DRY_RUN=false
 PRESET_VAULT=""
+CONFIG_FILE=""
 
+NEXT_IS=""
 for arg in "$@"; do
     case "$arg" in
         --dry-run) DRY_RUN=true ;;
-        --vault) NEXT_IS_VAULT=true ;;
-        *) [ "$NEXT_IS_VAULT" = true ] && PRESET_VAULT="$arg" && NEXT_IS_VAULT=false ;;
+        --vault) NEXT_IS="vault" ;;
+        --config) NEXT_IS="config" ;;
+        *)
+            case "$NEXT_IS" in
+                vault) PRESET_VAULT="$arg" ;;
+                config) CONFIG_FILE="$arg" ;;
+            esac
+            NEXT_IS=""
+            ;;
     esac
 done
 
@@ -222,8 +231,10 @@ if [ "$DRY_RUN" = true ]; then
     warn "DRY RUN mode — no files will be created"
     echo ""
 fi
-echo -ne "  Press ${BOLD}Enter${NC} to begin, or ${BOLD}Ctrl+C${NC} to exit: "
-read -r
+if [ -z "$CONFIG_FILE" ]; then
+    echo -ne "  Press ${BOLD}Enter${NC} to begin, or ${BOLD}Ctrl+C${NC} to exit: "
+    read -r
+fi
 
 # =============================================================================
 # SECTION 1 — VAULT LOCATION
@@ -257,6 +268,111 @@ if [ "$DRY_RUN" = false ] && [ -d "$VAULT_ROOT" ]; then
 fi
 
 success "Vault will be created at: $VAULT_ROOT"
+
+# =============================================================================
+# CONFIG FILE MODE — Skip interactive questions if --config provided
+# =============================================================================
+
+if [ -n "$CONFIG_FILE" ]; then
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo ""
+        echo -e "  ${RED}Config file not found: $CONFIG_FILE${NC}"
+        exit 1
+    fi
+
+    echo ""
+    echo -e "  ${GREEN}Loading config from: ${BOLD}$CONFIG_FILE${NC}"
+    echo ""
+
+    # --- Read JSON using python3 (available on macOS and most Linux) ---
+    _json_val() {
+        python3 -c "
+import json, sys
+with open('$CONFIG_FILE') as f:
+    data = json.load(f)
+keys = '$1'.split('.')
+val = data
+for k in keys:
+    if val is None: break
+    val = val.get(k)
+if val is None:
+    print('')
+elif isinstance(val, list):
+    print('\n'.join(str(v) for v in val))
+else:
+    print(str(val))
+" 2>/dev/null || echo ""
+    }
+
+    # --- Load all values from config ---
+    USER_NAME=$(_json_val "user.name")
+    USER_TIMEZONE=$(_json_val "user.timezone")
+    USER_LOCATION=$(_json_val "user.location")
+    USER_HOURS=$(_json_val "user.hours")
+    USER_ROLE=$(_json_val "user.role")
+    USER_STACK=$(_json_val "user.stack")
+    USER_COMMS=$(_json_val "user.comms")
+    USER_ALWAYS_KNOW=$(_json_val "user.always_know")
+    USER_ROLES_RAW=$(_json_val "user.roles")
+
+    AGENT_NAME=$(_json_val "agent.name")
+    AGENT_EMOJI=$(_json_val "agent.emoji")
+    AGENT_PERSONALITY=$(_json_val "agent.personality")
+    AGENT_TONE=$(_json_val "agent.tone")
+    AGENT_NEVER=$(_json_val "agent.never")
+
+    YEAR_THEMES=$(_json_val "system.year_themes")
+    YEAR_MISOGI=$(_json_val "system.year_misogi")
+    WORK_PRINCIPLE=$(_json_val "system.work_principle")
+
+    PROJECT_NAME=$(_json_val "project.name")
+    PROJECT_WHAT=$(_json_val "project.what")
+    PROJECT_DONE_WHEN=$(_json_val "project.done_when")
+
+    # --- Defaults for empty values ---
+    [ -z "$USER_NAME" ] && { echo -e "  ${RED}Error: user.name is required in config.${NC}"; exit 1; }
+    [ -z "$USER_TIMEZONE" ] && USER_TIMEZONE="America/New_York"
+    [ -z "$USER_HOURS" ] && USER_HOURS="9am–6pm weekdays"
+    [ -z "$USER_COMMS" ] && USER_COMMS="Direct and concise, no fluff"
+    [ -z "$AGENT_NAME" ] && AGENT_NAME="Sage"
+    [ -z "$AGENT_EMOJI" ] && AGENT_EMOJI="🧠"
+    [ -z "$AGENT_PERSONALITY" ] && AGENT_PERSONALITY="Direct and sharp, no fluff, honest about uncertainty"
+    [ -z "$AGENT_TONE" ] && AGENT_TONE="Casual, like a smart friend who happens to be an expert"
+    [ -z "$AGENT_NEVER" ] && AGENT_NEVER="Never flatter. Never add commitments without asking. Never be vague."
+    [ -z "$WORK_PRINCIPLE" ] && WORK_PRINCIPLE="Fewer things, done completely"
+
+    # --- Format roles ---
+    USER_ROLES_LIST=""
+    while IFS= read -r role; do
+        [ -n "$role" ] && USER_ROLES_LIST="${USER_ROLES_LIST}- ${role}
+"
+    done <<< "$USER_ROLES_RAW"
+    [ -z "$USER_ROLES_LIST" ] && USER_ROLES_LIST="- (fill in your roles)
+"
+
+    # --- Project ---
+    ADD_PROJECT=false
+    if [ -n "$PROJECT_NAME" ]; then
+        ADD_PROJECT=true
+        PROJECT_SLUG=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+    fi
+
+    # --- Show summary ---
+    echo -e "  ${CYAN}Name:${NC}       $USER_NAME"
+    echo -e "  ${CYAN}Agent:${NC}      $AGENT_NAME $AGENT_EMOJI"
+    echo -e "  ${CYAN}Timezone:${NC}   $USER_TIMEZONE"
+    echo -e "  ${CYAN}Themes:${NC}     $YEAR_THEMES"
+    echo -e "  ${CYAN}Misogi:${NC}     $YEAR_MISOGI"
+    [ "$ADD_PROJECT" = true ] && echo -e "  ${CYAN}Project:${NC}    $PROJECT_NAME"
+    echo ""
+
+    success "Config loaded. Building your vault..."
+
+    # Skip to vault creation (jump past interactive sections)
+else
+# =============================================================================
+# INTERACTIVE MODE — Ask questions
+# =============================================================================
 
 # =============================================================================
 # SECTION 2 — ABOUT YOU
@@ -469,6 +585,15 @@ if [ "$CONFIRMED" = false ]; then
     echo ""
     echo "  Cancelled. Run again when ready."
     exit 0
+fi
+
+fi  # End of interactive vs config-file mode
+
+# --- Set defaults for config-file mode (cron + git) ---
+# In config mode, skip cron activation and init git by default
+if [ -n "$CONFIG_FILE" ]; then
+    [ -z "$ACTIVATE_CRON" ] && ACTIVATE_CRON=false
+    [ -z "$INIT_GIT" ] && INIT_GIT=true
 fi
 
 # =============================================================================
@@ -1005,6 +1130,7 @@ mkf "$VAULT_ROOT/06-Agent/cron/README.md" "# Scheduled Jobs
 | weekly-review | Friday 17:00 | Draft weekly review |
 | quarterly-checkin | 1st of quarter | Quarterly planning prompt |
 | vault-lint | Friday 16:00 | 05-Meta/vault-health.md |
+| rebuild-context | 6:00 + 12:00 daily | 06-Agent/workspace/CONTEXT-PACK.md |
 
 ## Activate
   bash $VAULT_ROOT/06-Agent/cron/install-jobs.sh
@@ -1122,24 +1248,9 @@ run_llm() {
 "
 
 # Job scripts
-mkf "$VAULT_ROOT/06-Agent/cron/jobs/daily-briefing.sh" "#!/bin/bash
-VAULT=\"$VAULT_ROOT\"
-AGENT=\"\$VAULT/06-Agent\"
-DATE=\$(date +%Y-%m-%d)
-DAILY=\"\$VAULT/07-Systems/goals/daily/\$DATE.md\"
-TEMPLATE=\"\$VAULT/07-Systems/goals/daily/_template.md\"
-LOG=\"\$AGENT/cron/logs/\$DATE-daily-briefing.log\"
-source \"\$AGENT/config/llm.conf\"
-
-[ ! -f \"\$DAILY\" ] && cp \"\$TEMPLATE\" \"\$DAILY\" && sed \"s/YYYY-MM-DD/\$DATE/g\" \"\$DAILY\" > \"\$DAILY.tmp\" && mv \"\$DAILY.tmp\" \"\$DAILY\"
-
-SYSTEM=\$(cat \"\$AGENT/workspace/AGENTS.md\"; echo; cat \"\$AGENT/workspace/SOUL.md\"; echo; cat \"\$AGENT/workspace/USER.md\")
-TASK=\$(cat \"\$AGENT/cron/prompts/daily-briefing.md\")
-
-echo \"[\$(date)] daily-briefing start\" >> \"\$LOG\"
-run_llm \"\$SYSTEM\" \"\$TASK\" >> \"\$LOG\" 2>&1
-echo \"[\$(date)] done\" >> \"\$LOG\"
-"
+# daily-briefing: data-driven, no LLM needed for basic stats
+cp "$TEMPLATES_DIR/cron/jobs/daily-briefing.sh" "$VAULT_ROOT/06-Agent/cron/jobs/daily-briefing.sh"
+success "06-Agent/cron/jobs/daily-briefing.sh (from template)"
 
 if [ "$MINIMAL" = false ]; then
 mkf "$VAULT_ROOT/06-Agent/cron/jobs/daily-closing.sh" "#!/bin/bash
@@ -1187,6 +1298,159 @@ run_llm \"\$SYSTEM\" \"\$TASK\" >> \"\$LOG\" 2>&1
 echo \"[\$(date)] done\" >> \"\$LOG\"
 "
 fi
+
+# rebuild-context.sh — generates CONTEXT-PACK.md (no LLM needed, pure bash)
+mkf "$VAULT_ROOT/06-Agent/cron/jobs/rebuild-context.sh" '#!/bin/bash
+
+# =============================================================================
+# rebuild-context.sh — Generates CONTEXT-PACK.md
+# =============================================================================
+# Assembles a single file from vault sources so any LLM session can load
+# full context in one read instead of seven.
+#
+# Output: 06-Agent/workspace/CONTEXT-PACK.md
+# Runs via cron 2x/day (6am, noon) or manually: brain context
+# This is a read-only derived cache. Delete it → rebuilt next cycle.
+# =============================================================================
+
+set -e
+
+if [ -z "$VAULT_ROOT" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    VAULT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+fi
+
+OUTPUT="$VAULT_ROOT/06-Agent/workspace/CONTEXT-PACK.md"
+NOW=$(date +"%Y-%m-%dT%H:%M:%S")
+TODAY=$(date +"%Y-%m-%d")
+YESTERDAY=$(date -v-1d +"%Y-%m-%d" 2>/dev/null || date -d "yesterday" +"%Y-%m-%d" 2>/dev/null || echo "")
+
+strip_frontmatter() {
+    local path="$1"
+    if [ -f "$path" ]; then
+        awk '\''BEGIN{fm=0} /^---$/{fm++; next} fm>=2||fm==0{print}'\'' "$path"
+    fi
+}
+
+count_files() {
+    local dir="$1"
+    if [ -d "$dir" ]; then
+        find "$dir" -maxdepth 1 -type f -not -name ".*" -not -name "_*" | wc -l | tr -d " "
+    else
+        echo "0"
+    fi
+}
+
+# --- Collect data ---
+SOUL=$(strip_frontmatter "$VAULT_ROOT/06-Agent/workspace/SOUL.md")
+USER_PROFILE=$(strip_frontmatter "$VAULT_ROOT/06-Agent/workspace/USER.md")
+MEMORY=$(strip_frontmatter "$VAULT_ROOT/06-Agent/workspace/memory.md")
+
+TODAY_MEMORY=""
+[ -f "$VAULT_ROOT/06-Agent/workspace/memory/$TODAY.md" ] && TODAY_MEMORY=$(cat "$VAULT_ROOT/06-Agent/workspace/memory/$TODAY.md")
+
+YESTERDAY_MEMORY=""
+[ -n "$YESTERDAY" ] && [ -f "$VAULT_ROOT/06-Agent/workspace/memory/$YESTERDAY.md" ] && YESTERDAY_MEMORY=$(cat "$VAULT_ROOT/06-Agent/workspace/memory/$YESTERDAY.md")
+
+# --- Active Projects ---
+PROJECTS=""
+if [ -d "$VAULT_ROOT/01-Projects" ]; then
+    for proj_dir in "$VAULT_ROOT/01-Projects"/*/; do
+        [ -d "$proj_dir" ] || continue
+        proj_name=$(basename "$proj_dir")
+        [ "$proj_name" = "_template.md" ] && continue
+        readme="$proj_dir/README.md"
+        if [ -f "$readme" ]; then
+            status=$(grep -m1 "^status:" "$readme" 2>/dev/null | sed "s/status: *//" | tr -d " ")
+            [ "$status" != "active" ] && continue
+            area=$(grep -m1 "^area:" "$readme" 2>/dev/null | sed "s/area: *//")
+            # Last modified — Linux first, macOS fallback
+            last_mod_date=$(find "$proj_dir" -maxdepth 2 -name "*.md" -type f -printf "%T@ %p\n" 2>/dev/null | sort -rn | head -1 | awk "{ts=int(\$1); \"date -d @\"ts\" +%Y-%m-%d\" | getline d; print d}")
+            if [ -z "$last_mod_date" ]; then
+                last_mod_date=$(find "$proj_dir" -maxdepth 2 -name "*.md" -type f -exec stat -f "%m" {} \; 2>/dev/null | sort -rn | head -1 | xargs -I{} date -r {} +"%Y-%m-%d" 2>/dev/null || echo "unknown")
+            fi
+            open_tasks=$(grep -c "^\- \[ \]" "$readme" 2>/dev/null; true)
+            closed_tasks=$(grep -c "^\- \[x\]" "$readme" 2>/dev/null; true)
+            PROJECTS="${PROJECTS}- **${proj_name}** — ${area:-no area} | last active: ${last_mod_date} | open: ${open_tasks} / done: ${closed_tasks}
+"
+        fi
+    done
+fi
+
+INBOX_COUNT=$(count_files "$VAULT_ROOT/00-Inbox")
+
+# --- Corrections ---
+CORRECTIONS=""
+if [ -f "$VAULT_ROOT/06-Agent/workspace/corrections.md" ]; then
+    active=$(awk "/^## Active Observations/,/^## /{print}" "$VAULT_ROOT/06-Agent/workspace/corrections.md" | grep "^|" | grep -v "^| Pattern" | grep -v "^|-" | grep -v "| *|" || true)
+    [ -n "$active" ] && CORRECTIONS="$active"
+fi
+
+PENDING_COUNT=0
+[ -f "$VAULT_ROOT/06-Agent/state/pending-actions.md" ] && PENDING_COUNT=$(grep -c "^\- \[ \]" "$VAULT_ROOT/06-Agent/state/pending-actions.md" 2>/dev/null || echo "0")
+
+# --- Write output ---
+cat > "$OUTPUT" << CTXEOF
+# CONTEXT-PACK.md
+> Auto-generated — do not edit manually.
+> Source: SOUL.md, USER.md, memory.md, project READMEs, corrections.md
+> Last updated: ${NOW}
+
+---
+
+## Identity
+
+${SOUL}
+
+---
+
+## User Profile
+
+${USER_PROFILE}
+
+---
+
+## Long-Term Memory
+
+${MEMORY}
+
+---
+
+## Active Projects
+
+${PROJECTS:-No active projects found.}
+
+---
+
+## Vault Status
+
+- Inbox items: ${INBOX_COUNT}
+- Pending actions: ${PENDING_COUNT}
+- Date: ${TODAY}
+
+---
+
+## Recent Session Memory
+
+### Today (${TODAY})
+${TODAY_MEMORY:-No session log for today yet.}
+
+### Yesterday (${YESTERDAY:-unknown})
+${YESTERDAY_MEMORY:-No session log for yesterday.}
+
+---
+
+## Patterns Learned
+
+${CORRECTIONS:-No active patterns being tracked.}
+
+---
+
+*End of context pack. For full details, read individual source files.*
+CTXEOF
+
+echo "✓ CONTEXT-PACK.md updated — $(date)"
+'
 
 chmod +x "$VAULT_ROOT/06-Agent/cron/jobs/"*.sh
 
@@ -1328,6 +1592,32 @@ mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.weekly-tag.plist" "<?xml versio
     </dict>
     <key>StandardOutPath</key><string>$VAULT_ROOT/06-Agent/cron/logs/weekly-tag.log</string>
     <key>StandardErrorPath</key><string>$VAULT_ROOT/06-Agent/cron/logs/weekly-tag-error.log</string>
+    <key>RunAtLoad</key><false/>
+</dict></plist>"
+
+# rebuild-context plist — runs at 6am and noon
+mkf "$VAULT_ROOT/06-Agent/cron/launchd/com.brain.rebuild-context.plist" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\"><dict>
+    <key>Label</key><string>com.brain.rebuild-context</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>$VAULT_ROOT/06-Agent/cron/jobs/rebuild-context.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Hour</key><integer>6</integer>
+            <key>Minute</key><integer>0</integer>
+        </dict>
+        <dict>
+            <key>Hour</key><integer>12</integer>
+            <key>Minute</key><integer>0</integer>
+        </dict>
+    </array>
+    <key>StandardOutPath</key><string>$VAULT_ROOT/06-Agent/cron/logs/rebuild-context.log</string>
+    <key>StandardErrorPath</key><string>$VAULT_ROOT/06-Agent/cron/logs/rebuild-context-error.log</string>
     <key>RunAtLoad</key><false/>
 </dict></plist>"
 fi
@@ -1701,25 +1991,49 @@ parent: [[$year-$quarter]]
 # $week
 
 ## Focus
+*One sentence: what does a successful week look like?*
 
 ## Big 3
+*Strategic priorities — these move the needle on quarterly goals*
 - [ ]
 - [ ]
+- [ ]
+
+## Tasks
+*Independent stuff that needs to get done this week (errands, maintenance, life)*
 - [ ]
 
 ## Daily Logs
 $(_e=$(date +%s); _w=$(date +%u); _m=$(( _e - (_w-1)*86400 )); for i in 0 1 2 3 4; do t=$(( _m + i*86400 )); d=$(date -r $t +%Y-%m-%d 2>/dev/null || date -d "@$t" +%Y-%m-%d 2>/dev/null || echo ""); [ -n "$d" ] && echo "[[${d}]]"; done | tr '\n' ' ')
 
+## Quarterly Alignment
+*How does this week connect to [[$year-$quarter]] Big Rocks?*
+
+
 ## Friday Review
+*(Filled during Friday planning conversation with ${AGENT_NAME})*
+
+**Big 3 status:**
+
 **What went well?**
 
 **What didn't?**
 
 **Carries forward:**
+
+**Independent tasks completed:**
 "
+
+# Weekly note template (for auto-creation by daily-briefing.sh)
+stamp_template "$TEMPLATES_DIR/goals/weekly-template.md" "$VAULT_ROOT/07-Systems/goals/weekly/_template.md"
+
 fi
 
-# Daily note template
+# Daily note template (also used by daily-briefing.sh)
+stamp_template "$TEMPLATES_DIR/goals/daily-template.md" "$VAULT_ROOT/07-Systems/goals/daily/_template.md"
+
+# Fallback: create inline if template stamp failed
+if [ ! -f "$VAULT_ROOT/07-Systems/goals/daily/_template.md" ]; then
 mkf "$VAULT_ROOT/07-Systems/goals/daily/_template.md" "---
 tags: [daily]
 date: YYYY-MM-DD
@@ -1741,7 +2055,7 @@ week: [[YYYY-WNN]]
 ---
 
 ## 🎯 Intentions
-*(yours)*
+*(set during morning conversation with ${AGENT_NAME} — based on weekly priorities)*
 - [ ]
 - [ ]
 - [ ]
@@ -1772,6 +2086,7 @@ week: [[YYYY-WNN]]
 Energy: /10
 Grateful for:
 "
+fi
 
 # Today's daily note
 mkf "$VAULT_ROOT/07-Systems/goals/daily/$today.md" "---
@@ -1795,7 +2110,7 @@ week: [[$week]]
 ---
 
 ## 🎯 Intentions
-*(yours)*
+*(set during morning conversation with ${AGENT_NAME} — based on weekly priorities)*
 - [ ]
 - [ ]
 - [ ]

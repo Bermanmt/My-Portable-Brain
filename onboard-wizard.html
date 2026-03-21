@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portable Brain — Setup Wizard</title>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface-2: #242424;
+    --border: #333;
+    --text: #e0e0e0;
+    --text-dim: #888;
+    --accent: #7c6bf5;
+    --accent-glow: rgba(124, 107, 245, 0.15);
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --radius: 12px;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    line-height: 1.6;
+  }
+
+  .wizard {
+    max-width: 640px;
+    width: 100%;
+  }
+
+  /* --- Header --- */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #7c6bf5, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header p {
+    color: var(--text-dim);
+    font-size: 15px;
+  }
+
+  /* --- Progress --- */
+  .progress {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 40px;
+  }
+  .progress-dot {
+    flex: 1;
+    height: 4px;
+    background: var(--surface-2);
+    border-radius: 2px;
+    transition: background 0.3s;
+  }
+  .progress-dot.active { background: var(--accent); }
+  .progress-dot.done { background: var(--success); }
+
+  /* --- Steps --- */
+  .step {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .step.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .step-number {
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+  }
+  .step h2 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .step-desc {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-bottom: 32px;
+    line-height: 1.7;
+  }
+
+  /* --- Fields --- */
+  .field {
+    margin-bottom: 24px;
+  }
+  .field label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+  .field .hint {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .field input,
+  .field textarea,
+  .field select {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .field input:focus,
+  .field textarea:focus,
+  .field select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .field input::placeholder,
+  .field textarea::placeholder {
+    color: #555;
+  }
+  .field textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+
+  /* --- Inline pair --- */
+  .field-pair {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: 12px;
+  }
+
+  /* --- Optional badge --- */
+  .optional {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 400;
+    margin-left: 6px;
+  }
+
+  /* --- Info box --- */
+  .info-box {
+    background: var(--accent-glow);
+    border: 1px solid rgba(124, 107, 245, 0.25);
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    color: #c4b5fd;
+  }
+  .info-box strong { color: var(--text); }
+
+  /* --- Buttons --- */
+  .nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+  .btn {
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+  .btn-back {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .btn-back:hover { border-color: var(--text-dim); color: var(--text); }
+  .btn-next {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-next:hover { filter: brightness(1.15); }
+  .btn-next:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-download {
+    background: var(--success);
+    color: #000;
+    font-weight: 600;
+    padding: 14px 32px;
+    font-size: 15px;
+    width: 100%;
+  }
+  .btn-download:hover { filter: brightness(1.1); }
+
+  /* --- Review --- */
+  .review-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .review-section h3 {
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .review-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 14px;
+    border-bottom: 1px solid var(--surface-2);
+  }
+  .review-row:last-child { border-bottom: none; }
+  .review-label { color: var(--text-dim); }
+  .review-value { font-weight: 500; text-align: right; max-width: 60%; }
+
+  /* --- Terminal block --- */
+  .terminal {
+    background: #0d0d0d;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 24px 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--success);
+    overflow-x: auto;
+  }
+  .terminal .comment { color: var(--text-dim); }
+  .terminal .prompt { color: var(--accent); }
+
+  /* --- Checkbox toggle --- */
+  .toggle-field {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+  }
+  .toggle-field input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--accent);
+  }
+  .toggle-field label {
+    margin: 0;
+    cursor: pointer;
+  }
+
+  @media (max-width: 480px) {
+    body { padding: 24px 16px; }
+    .field-pair { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wizard">
+  <div class="header">
+    <h1>🧠 Portable Brain</h1>
+    <p>Set up your AI-powered personal vault in a few minutes.</p>
+  </div>
+
+  <div class="progress" id="progress"></div>
+
+  <!-- ========== STEP 0: Welcome ========== -->
+  <div class="step active" data-step="0">
+    <div class="step-number">Welcome</div>
+    <h2>What is this?</h2>
+    <div class="step-desc">
+      You're about to create a <strong>Brain Vault</strong> — a personal knowledge system that
+      any AI can read instantly. It gives your AI agent context about who you are,
+      what you're working on, and how you like to work.
+    </div>
+
+    <div class="info-box">
+      <strong>Here's what happens:</strong><br>
+      1. You'll answer a few questions about yourself and your goals<br>
+      2. You'll set up your AI agent's personality<br>
+      3. You'll download a config file<br>
+      4. Run one command to create your vault<br><br>
+      Takes about 5 minutes. You can change everything later.
+    </div>
+
+    <div class="nav">
+      <div></div>
+      <button class="btn btn-next" onclick="nextStep()">Let's go →</button>
+    </div>
+  </div>
+
+  <!-- ========== STEP 1: About You ========== -->
+  <div class="step" data-step="1">
+    <div class="step-number">Step 1 of 6</div>
+    <h2>About you</h2>
+    <div class="step-desc">
+      Your agent needs to know who you are. This info goes into <strong>USER.md</strong> —
+      a file your AI reads at the start of every session so it doesn't ask you the same questions twice.
+    </div>
+
+    <div class="field">
+      <label>Your name</label>
+      <input type="text" id="user_name" placeholder="e.g. María, James, Andrés" required>
+    </div>
+
+    <div class="field">
+      <label>What do you do?</label>
+      <span class="hint">One line — your role or what describes you best right now.</span>
+      <input type="text" id="user_role" placeholder="e.g. Indie founder, building B2B SaaS">
+    </div>
+
+    <div class="field">
+      <label>Your timezone</label>
+      <select id="user_timezone">
+        <option value="America/New_York">Eastern (New York)</option>
+        <option value="America/Chicago">Central (Chicago)</option>
+        <option value="America/Denver">Mountain (Denver)</option>
+        <option value="America/Los_Angeles">Pacific (Los Angeles)</option>
+        <option value="America/Costa_Rica">Costa Rica</option>
+        <option value="America/Mexico_City">Mexico City</option>
+        <option value="America/Bogota">Colombia</option>
+        <option value="America/Lima">Peru</option>
+        <option value="America/Santiago">Chile</option>
+        <option value="America/Argentina/Buenos_Aires">Argentina</option>
+        <option value="America/Sao_Paulo">Brazil (São Paulo)</option>
+        <option value="Europe/London">London</option>
+        <option value="Europe/Madrid">Madrid</option>
+        <option value="Europe/Berlin">Berlin</option>
+        <option value="Europe/Paris">Paris</option>
+        <option value="Asia/Tokyo">Tokyo</option>
+        <option value="Asia/Shanghai">Shanghai</option>
+        <option value="Asia/Kolkata">India (Kolkata)</option>
+        <option value="Australia/Sydney">Sydney</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Your working hours</label>
+      <input type="text" id="user_hours" placeholder="e.g. 9am–6pm weekdays" value="9am–6pm weekdays">
+    </div>
+
+    <div class="field">
+      <label>Your location <span class="optional">optional</span></label>
+      <input type="text" id="user_location" placeholder="e.g. San José, Costa Rica">
+    </div>
+
+    <div class="nav">
+      <button class="btn btn-back" onclick="prevStep()">← Back</button>
+      <button class="btn btn-next" onclick="nextStep()">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ========== STEP 2: Work style ========== -->
+  <div class="step" data-step="2">
+    <div class="step-number">Step 2 of 6</div>
+    <h2>How you work</h2>
+    <div class="step-desc">
+      This helps your agent match your style. It won't overload you with information
+      if you prefer concise answers, and it won't skip details if you like thoroughness.
+    </div>
+
+    <div class="field">
+      <label>How do you prefer to communicate?</label>
+      <span class="hint">How should your agent talk to you? Think about what annoys you in conversations with AI.</span>
+      <input type="text" id="user_comms" placeholder="e.g. Direct and concise, no fluff" value="Direct and concise, no fluff">
+    </div>
+
+    <div class="field">
+      <label>Your tech stack or main tools <span class="optional">optional</span></label>
+      <span class="hint">What tools do you use daily? This helps the agent give relevant advice.</span>
+      <input type="text" id="user_stack" placeholder="e.g. TypeScript, Postgres, Notion, Figma">
+    </div>
+
+    <div class="field">
+      <label>Anything the agent should always know about you? <span class="optional">optional</span></label>
+      <span class="hint">Things that affect how you work — the agent remembers these permanently.</span>
+      <textarea id="user_always_know" placeholder="e.g. I have ADHD — keep tasks small and specific.&#10;I'm a morning person — don't schedule anything after 4pm.&#10;I'm learning Portuguese on the side."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Your main working principle</label>
+      <span class="hint">One rule that guides how you approach work. The agent uses this to filter suggestions.</span>
+      <input type="text" id="work_principle" placeholder="e.g. Fewer things, done completely" value="Fewer things, done completely">
+    </div>
+
+    <div class="nav">
+      <button class="btn btn-back" onclick="prevStep()">← Back</button>
+      <button class="btn btn-next" onclick="nextStep()">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ========== STEP 3: Roles ========== -->
+  <div class="step" data-step="3">
+    <div class="step-number">Step 3 of 6</div>
+    <h2>Your life roles</h2>
+    <div class="step-desc">
+      Roles are the <strong>most important input in the whole system.</strong> Every time you
+      or your agent consider taking on a new commitment, it gets checked against these roles.
+      If it doesn't serve a role, it probably shouldn't be on your plate.
+    </div>
+
+    <div class="info-box">
+      <strong>Think: what are the hats you wear in life?</strong><br>
+      Examples: Founder, Father, Partner, Builder, Friend, Athlete<br>
+      Aim for 4–7. Too many means no real priorities.
+    </div>
+
+    <div class="field">
+      <label>Your roles</label>
+      <span class="hint">One role per line. These go into your Core System and guide everything else.</span>
+      <textarea id="user_roles" rows="6" placeholder="Founder&#10;Father&#10;Husband&#10;Builder&#10;Friend"></textarea>
+    </div>
+
+    <div class="nav">
+      <button class="btn btn-back" onclick="prevStep()">← Back</button>
+      <button class="btn btn-next" onclick="nextStep()">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ========== STEP 4: Agent ========== -->
+  <div class="step" data-step="4">
+    <div class="step-number">Step 4 of 6</div>
+    <h2>Your AI agent</h2>
+    <div class="step-desc">
+      Your agent has a name, a personality, and rules about what it should never do.
+      This goes into <strong>SOUL.md</strong> — the file that shapes how your agent thinks and talks.
+      Pick something that feels right. You can change it anytime.
+    </div>
+
+    <div class="field-pair">
+      <div class="field">
+        <label>Agent name</label>
+        <input type="text" id="agent_name" placeholder="e.g. Sage, Pepe, Atlas" value="Sage">
+      </div>
+      <div class="field">
+        <label>Emoji</label>
+        <input type="text" id="agent_emoji" placeholder="🧠" value="🧠" style="text-align:center; font-size: 20px;">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Agent personality</label>
+      <span class="hint">How would you describe this agent to a friend? One sentence.</span>
+      <input type="text" id="agent_personality" placeholder="e.g. Direct and sharp, a little dry — gets to the point fast" value="Direct and sharp, no fluff, honest about uncertainty">
+    </div>
+
+    <div class="field">
+      <label>Agent tone</label>
+      <span class="hint">How should the agent sound when talking to you?</span>
+      <input type="text" id="agent_tone" placeholder="e.g. Casual, like a smart colleague" value="Casual, like a smart friend who happens to be an expert">
+    </div>
+
+    <div class="field">
+      <label>What should the agent NEVER do?</label>
+      <span class="hint">Hard rules. The agent will follow these strictly.</span>
+      <input type="text" id="agent_never" placeholder="e.g. Never flatter. Never add tasks without asking." value="Never flatter. Never add commitments without asking. Never be vague.">
+    </div>
+
+    <div class="nav">
+      <button class="btn btn-back" onclick="prevStep()">← Back</button>
+      <button class="btn btn-next" onclick="nextStep()">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ========== STEP 5: Goals ========== -->
+  <div class="step" data-step="5">
+    <div class="step-number">Step 5 of 6</div>
+    <h2>Your core system</h2>
+    <div class="step-desc">
+      This is the foundation layer — the big-picture stuff that everything else connects to.
+      Your themes shape the year. Your Misogi is the one challenge that defines it.
+      These go into <strong>08-CoreSystem</strong> and your yearly planning note.
+    </div>
+
+    <div class="field">
+      <label>Your themes for <span id="year-display"></span></label>
+      <span class="hint">3 words or phrases that define what this year is about for you.</span>
+      <input type="text" id="year_themes" placeholder="e.g. Health, Balance, Presence">
+    </div>
+
+    <div class="field">
+      <label>Your Misogi</label>
+      <span class="hint">One big, scary challenge for the year — something with a real chance of failure. The Japanese concept of a defining test.</span>
+      <input type="text" id="year_misogi" placeholder="e.g. Run a marathon, Launch my first product, Climb Chirripó">
+    </div>
+
+    <div class="field">
+      <label>Add a current project? <span class="optional">optional</span></label>
+      <span class="hint">If you have something active, we'll create a project folder for it.</span>
+      <div class="toggle-field">
+        <input type="checkbox" id="add_project" onchange="toggleProject()">
+        <label for="add_project">Yes, set up my first project</label>
+      </div>
+    </div>
+
+    <div id="project-fields" style="display: none;">
+      <div class="field">
+        <label>Project name</label>
+        <input type="text" id="project_name" placeholder="e.g. Launch marketing site">
+      </div>
+      <div class="field">
+        <label>What is this project?</label>
+        <input type="text" id="project_what" placeholder="One sentence — what are you building or doing?">
+      </div>
+      <div class="field">
+        <label>How will you know it's done?</label>
+        <input type="text" id="project_done" placeholder="e.g. Site is live with 3 landing pages and analytics">
+      </div>
+    </div>
+
+    <div class="nav">
+      <button class="btn btn-back" onclick="prevStep()">← Back</button>
+      <button class="btn btn-next" onclick="nextStep()">Review →</button>
+    </div>
+  </div>
+
+  <!-- ========== STEP 6: Review & Download ========== -->
+  <div class="step" data-step="6">
+    <div class="step-number">Step 6 of 6</div>
+    <h2>Review & download</h2>
+    <div class="step-desc">
+      Here's everything you entered. Check it looks right, then download your config file.
+    </div>
+
+    <div id="review-content"></div>
+
+    <button class="btn btn-download" onclick="downloadConfig()">Download brain-config.json</button>
+
+    <div class="terminal">
+      <span class="comment"># After downloading, open your terminal and run:</span><br>
+      <span class="prompt">$</span> bash onboard.sh --config brain-config.json<br>
+      <br>
+      <span class="comment"># Or specify where to create your vault:</span><br>
+      <span class="prompt">$</span> bash onboard.sh --config brain-config.json --vault ~/Brain
+    </div>
+
+    <div class="info-box">
+      <strong>What happens next?</strong><br>
+      The setup script reads your config and creates your vault — all the folders, templates,
+      and automation files. Your first daily note will be waiting for you. Open the vault in
+      your favorite markdown editor (Obsidian, VS Code, etc.) and start your first session with your agent.
+    </div>
+
+    <div class="nav">
+      <button class="btn btn-back" onclick="prevStep()">← Edit</button>
+      <div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOTAL_STEPS = 7; // 0-6
+let currentStep = 0;
+
+// Set year display
+document.getElementById('year-display').textContent = new Date().getFullYear();
+
+// Auto-detect timezone
+try {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const sel = document.getElementById('user_timezone');
+  for (let opt of sel.options) {
+    if (opt.value === tz) { opt.selected = true; break; }
+  }
+} catch(e) {}
+
+function updateProgress() {
+  const bar = document.getElementById('progress');
+  bar.innerHTML = '';
+  for (let i = 0; i < TOTAL_STEPS; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'progress-dot';
+    if (i < currentStep) dot.classList.add('done');
+    if (i === currentStep) dot.classList.add('active');
+    bar.appendChild(dot);
+  }
+}
+
+function showStep(n) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.querySelector(`[data-step="${n}"]`).classList.add('active');
+  currentStep = n;
+  updateProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  if (n === 6) buildReview();
+}
+
+function nextStep() {
+  if (currentStep === 1) {
+    const name = document.getElementById('user_name').value.trim();
+    if (!name) {
+      document.getElementById('user_name').focus();
+      document.getElementById('user_name').style.borderColor = '#ef4444';
+      return;
+    }
+  }
+  if (currentStep < TOTAL_STEPS - 1) showStep(currentStep + 1);
+}
+
+function prevStep() {
+  if (currentStep > 0) showStep(currentStep - 1);
+}
+
+function toggleProject() {
+  document.getElementById('project-fields').style.display =
+    document.getElementById('add_project').checked ? 'block' : 'none';
+}
+
+function val(id) { return document.getElementById(id)?.value?.trim() || ''; }
+
+function buildReview() {
+  const sections = [];
+
+  // About you
+  let rows = [
+    ['Name', val('user_name')],
+    ['Role', val('user_role')],
+    ['Timezone', val('user_timezone')],
+    ['Working hours', val('user_hours')],
+  ];
+  if (val('user_location')) rows.push(['Location', val('user_location')]);
+  sections.push({ title: 'About You', rows });
+
+  // Work style
+  rows = [
+    ['Communication', val('user_comms')],
+    ['Work principle', val('work_principle')],
+  ];
+  if (val('user_stack')) rows.push(['Tech stack', val('user_stack')]);
+  if (val('user_always_know')) rows.push(['Always know', val('user_always_know').substring(0, 80) + (val('user_always_know').length > 80 ? '...' : '')]);
+  sections.push({ title: 'Work Style', rows });
+
+  // Roles
+  const roles = val('user_roles').split('\n').filter(r => r.trim());
+  sections.push({ title: 'Life Roles', rows: roles.map(r => [r.trim(), '']) });
+
+  // Agent
+  sections.push({ title: 'Your Agent', rows: [
+    ['Name', val('agent_name') + ' ' + val('agent_emoji')],
+    ['Personality', val('agent_personality')],
+    ['Tone', val('agent_tone')],
+    ['Never', val('agent_never')],
+  ]});
+
+  // Goals
+  rows = [];
+  if (val('year_themes')) rows.push(['Themes', val('year_themes')]);
+  if (val('year_misogi')) rows.push(['Misogi', val('year_misogi')]);
+  if (document.getElementById('add_project').checked && val('project_name')) {
+    rows.push(['Project', val('project_name')]);
+  }
+  if (rows.length) sections.push({ title: 'Core System', rows });
+
+  let html = '';
+  for (const sec of sections) {
+    html += `<div class="review-section"><h3>${sec.title}</h3>`;
+    for (const [label, value] of sec.rows) {
+      if (value) {
+        html += `<div class="review-row"><span class="review-label">${label}</span><span class="review-value">${value}</span></div>`;
+      } else {
+        html += `<div class="review-row"><span class="review-value" style="text-align:left">${label}</span></div>`;
+      }
+    }
+    html += '</div>';
+  }
+  document.getElementById('review-content').innerHTML = html;
+}
+
+function downloadConfig() {
+  const config = {
+    _version: 1,
+    _generated: new Date().toISOString(),
+    _tool: "portable-brain-wizard",
+
+    user: {
+      name: val('user_name'),
+      role: val('user_role'),
+      timezone: val('user_timezone'),
+      location: val('user_location'),
+      hours: val('user_hours'),
+      comms: val('user_comms'),
+      stack: val('user_stack'),
+      always_know: val('user_always_know'),
+      roles: val('user_roles').split('\n').filter(r => r.trim()),
+    },
+
+    agent: {
+      name: val('agent_name'),
+      emoji: val('agent_emoji'),
+      personality: val('agent_personality'),
+      tone: val('agent_tone'),
+      never: val('agent_never'),
+    },
+
+    system: {
+      year_themes: val('year_themes'),
+      year_misogi: val('year_misogi'),
+      work_principle: val('work_principle'),
+    },
+
+    project: document.getElementById('add_project').checked && val('project_name') ? {
+      name: val('project_name'),
+      what: val('project_what'),
+      done_when: val('project_done'),
+    } : null,
+  };
+
+  const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'brain-config.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Init
+updateProgress();
+
+// Enter key advances
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+    e.preventDefault();
+    nextStep();
+  }
+});
+</script>
+</body>
+</html>
