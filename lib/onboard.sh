@@ -997,6 +997,18 @@ $([ "$ADD_PROJECT" = true ] && echo "- First project: ${PROJECT_NAME}")
 ## Sessions
 (${AGENT_NAME} writes session observations here)
 "
+mkf "$VAULT_ROOT/06-Agent/workspace/vault-health.md" "# Vault Health Report
+*Generated: $today · Score: —/100 (run vault-health.sh to generate)*
+
+Run \`bash 06-Agent/cron/jobs/vault-health.sh\` to generate your first health report.
+"
+
+mkf "$VAULT_ROOT/06-Agent/workspace/pending-actions.md" "# Pending Actions & Patterns
+*Generated: $today · 0 items detected*
+
+Run \`bash 06-Agent/cron/jobs/pattern-check.sh\` to scan for pending actions.
+"
+
 success "06-Agent/workspace/"
 [ "$VAULT_TIER" = "1" ] && stamp_template \
     "$TEMPLATES_DIR/learn/06-agent.md" \
@@ -1219,6 +1231,14 @@ success "06-Agent/cron/jobs/daily-briefing.sh (from template)"
 # CRM scan: nightly contact detection and briefing update
 cp "$TEMPLATES_DIR/cron/jobs/crm-scan.sh" "$VAULT_ROOT/06-Agent/cron/jobs/crm-scan.sh"
 success "06-Agent/cron/jobs/crm-scan.sh (from template)"
+
+# Vault health: scores vault hygiene (stale projects, inbox, streak, contacts)
+cp "$TEMPLATES_DIR/cron/jobs/vault-health.sh" "$VAULT_ROOT/06-Agent/cron/jobs/vault-health.sh"
+success "06-Agent/cron/jobs/vault-health.sh (from template)"
+
+# Pattern check: detects recurring carries, stale actions, open loops
+cp "$TEMPLATES_DIR/cron/jobs/pattern-check.sh" "$VAULT_ROOT/06-Agent/cron/jobs/pattern-check.sh"
+success "06-Agent/cron/jobs/pattern-check.sh (from template)"
 
 if [ "$MINIMAL" = false ]; then
 mkf "$VAULT_ROOT/06-Agent/cron/jobs/daily-closing.sh" "#!/bin/bash

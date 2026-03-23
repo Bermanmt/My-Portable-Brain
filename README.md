@@ -1,8 +1,8 @@
-# 🧠 My Portable Brain
+# Portable Brain
 
-> A personal knowledge vault powered by Claude. Starts simple. Gets smarter as you use it.
+> An opinionated folder structure that gives any LLM instant context on startup. Your second brain — structured for AI, owned by you.
 
-[![Status](https://img.shields.io/badge/status-v0.1-blue.svg)](https://github.com/yourusername/portable-brain)
+[![Status](https://img.shields.io/badge/status-v0.2-blue.svg)](https://github.com/Bermanmt/My-Portable-Brain)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Requires](https://img.shields.io/badge/requires-bash-lightgrey.svg)]()
 
@@ -10,15 +10,16 @@
 
 ## What it is
 
-A structured vault for your notes, projects, and knowledge — with an AI agent built in from the start.
+A personal vault that makes any AI assistant immediately useful — not after weeks of training, but from the first session.
 
-One command. A few questions. You get a vault that:
-- Knows who you are and how you like to work
-- Has a personal AI agent configured to your style
-- Organizes around your actual life roles, not generic folders
-- Gets more calibrated to you over time through a simple feedback loop
+One command. A few questions. You get:
+- An AI agent that knows who you are, how you work, and what your priorities are
+- A planning system that adapts to your week (Monday kickoff, daily focus, Friday review, quarterly rocks)
+- A relationship manager that tracks the whole person — not just deals
+- Background scripts that keep your vault alive between sessions
+- Everything in plain markdown. No databases, no lock-in, no dependencies beyond bash.
 
-No databases. No Python. No dependencies beyond bash and a Claude session.
+**This is the context layer.** It's not an agent framework — it complements Claude, GPT, Cowork, Claude Code, or any LLM you use. Drop it in, and your AI gets you.
 
 ---
 
@@ -26,11 +27,11 @@ No databases. No Python. No dependencies beyond bash and a Claude session.
 
 ```bash
 git clone https://github.com/Bermanmt/My-Portable-Brain
-cd portable-brain
+cd My-Portable-Brain
 bash start.sh
 ```
 
-Five minutes of questions, then your vault is ready.
+Five minutes of setup, then your vault is ready. Open it in Obsidian, VS Code, or any editor.
 
 ---
 
@@ -38,59 +39,109 @@ Five minutes of questions, then your vault is ready.
 
 ```
 ~/Brain/
-├── 00-Inbox/               ← everything lands here first
-├── 01-Projects/            ← active work with a finish line
-├── 02-Areas/               ← ongoing responsibilities
-├── 03-Resources/           ← your knowledge base
-├── 04-Archive/             ← completed work, never deleted
-├── 05-Meta/                ← how the vault works
-├── 06-Agent/               ← AI agent runtime
-│   └── workspace/
-│       ├── AGENTS.md       ← operating instructions
-│       ├── USER.md         ← your profile
-│       ├── memory.md       ← long-term context
-│       └── corrections.md  ← self-improvement log
-├── 07-Systems/             ← CRM, goals, planning
-└── 08-CoreSystem/          ← your roles, principles, values
+├── 00-Inbox/                   ← everything lands here first
+│   ├── meetings/               ← meeting notes and transcripts
+│   ├── emails/                 ← email captures
+│   └── captures/               ← quick captures, screenshots, links
+├── 01-Projects/                ← active work with a finish line
+├── 02-Areas/                   ← ongoing responsibilities
+├── 03-Resources/               ← knowledge base — evergreen reference
+├── 04-Archive/                 ← completed or abandoned work
+├── 05-Meta/                    ← how the vault works
+├── 06-Agent/                   ← AI agent runtime
+│   ├── workspace/
+│   │   ├── AGENTS.md           ← operating instructions + planning protocol
+│   │   ├── SOUL.md             ← agent personality and tone
+│   │   ├── USER.md             ← your profile
+│   │   ├── memory.md           ← long-term context
+│   │   ├── vault-health.md     ← auto-generated hygiene score
+│   │   └── pending-actions.md  ← auto-detected patterns and open loops
+│   ├── subagents/
+│   │   ├── crm-manager/        ← relationship intelligence
+│   │   ├── calendar-agent/     ← schedule context for planning
+│   │   └── inbox-processor/    ← routes items to the right places
+│   └── cron/jobs/              ← background scripts
+├── 07-Systems/                 ← CRM, goals, planning cascade
+│   ├── CRM/contacts/           ← relationship files
+│   └── goals/                  ← daily → weekly → quarterly → yearly
+└── 08-CoreSystem/              ← your roles, principles, values
 ```
 
-Plain markdown files. Open in Obsidian, VS Code, or any editor. Works forever.
+Plain markdown files. Works forever.
 
 ---
 
-## The agent
+## The planning system
 
-Your vault ships with an AI agent configured to your style during setup.
+Your agent adapts its greeting based on the day:
 
-It reads your profile, memory, and operating instructions at the start of every session. It knows who you are, how you like to communicate, what your current projects are, and what your priorities are.
+| Day | What happens |
+|-----|-------------|
+| **Monday** | Last week's results, suggested Big 3 with reasoning, project pulse with staleness, calendar, people follow-ups |
+| **Tue–Thu** | Big 3 progress, today's schedule, anything needing attention |
+| **Friday** | Week review snapshot, then a planning conversation for next week |
+| **Quarter end** | Big Rocks status table, area check, then Q+1 planning |
+| **Quarter start** | Previous Q final score, new rocks, suggested W1 priorities |
+| **Ad-hoc** | Say "let's do a weekly review" any day — agent loads the right context |
 
-**What it does:**
-- Morning briefings written to your daily note
-- Weekly review drafts
-- Inbox processing with filing suggestions
-- Flags when something needs your attention
+The agent suggests priorities based on carries, deadlines, and project staleness — you approve or override.
 
-**What it never does:**
-- Move files without showing you first
-- Add commitments without asking
-- Archive anything without confirmation
-- Modify your personal sections in daily notes
+---
 
-### Self-improvement
+## Specialist agents
 
-The agent watches for patterns. When you correct the same thing three times, it asks once if you want to make the change permanent. One suggestion per session, maximum. You can always ask "what are you tracking?" for full transparency.
+Your main agent (the orchestrator) doesn't process raw data. Specialist agents handle their domains and maintain briefing files that the orchestrator reads on startup.
+
+| Agent | What it does |
+|-------|-------------|
+| **CRM Manager** | Tracks relationships (not just clients). Auto-updates from daily notes. Surfaces follow-ups, birthdays, open loops. |
+| **Calendar Agent** | Schedule context for planning. Enriches meetings with vault context (contacts, projects). Detects time crunches. |
+| **Inbox Processor** | Routes items to projects, areas, CRM. Flags action items. Relationship-aware. |
+
+Each specialist has:
+- `AGENT.md` — instructions and access rules
+- `briefing.md` — short summary, rewritten each run (~300-500 tokens)
+- `processing-log.md` — append-only audit trail
+
+**Auto-update policy:** silently update interaction logs, preferences, project links, dates. Only flag for user approval: new contacts, contradicting info, archiving.
+
+---
+
+## Background scripts
+
+Cron jobs keep the vault alive between sessions — no LLM needed:
+
+| Script | What it does | Schedule |
+|--------|-------------|----------|
+| `crm-scan.sh` | Detects contact mentions in daily notes, updates last-contact dates, refreshes CRM briefing | Nightly |
+| `vault-health.sh` | Scores vault hygiene (stale projects, inbox health, daily streak, dormant contacts) | Weekly |
+| `pattern-check.sh` | Surfaces recurring carries, stale project actions, CRM open loops, unchecked items | Nightly |
+| `daily-briefing.sh` | Creates morning note with dashboard stats | Morning |
+| `rebuild-context.sh` | Regenerates CONTEXT-PACK.md from vault sources | Morning |
+
+This is the "dumb detection" layer (bash, free, runs overnight). The "smart processing" layer (context extraction, preference updates) happens when the LLM reads the briefings next session.
+
+---
+
+## The CRM
+
+Not a sales CRM — a relationship manager. The same person can be a friend, client, and collaborator:
+
+- Multi-type relationships (friend + client + collaborator on one contact)
+- Personal context (birthday, kid's school, gift ideas) alongside professional context (deal stage, project links)
+- Auto-updated from daily notes and meetings
+- Interaction log with reverse-chronological entries
+- Open loops (commitments to people) surfaced in morning briefings
 
 ---
 
 ## Two tiers
 
-**Tier 1 — Lean**
-Minimal structure. Every folder has a `LEARN.md` explaining why it exists and what goes there. Best if you're new to PARA or want to understand the system as you build it.
+**Tier 1 — Lean:** Minimal structure. Every folder has a `LEARN.md` explaining what goes there. Best for getting started.
 
-**Tier 2 — Full**
-Complete vault with all systems pre-built: CRM, finances, goals cascade, weekly reviews, daily notes, scheduled automation. Best if you want everything ready on day one.
+**Tier 2 — Full:** Complete vault with all systems pre-built: CRM, goals cascade, scheduled automation, all specialist agents. Best if you want everything on day one.
 
-Both tiers include the agent and the self-improvement loop.
+Both tiers include the agent, planning system, and self-improvement loop.
 
 ---
 
@@ -100,8 +151,8 @@ Both tiers include the agent and the self-improvement loop.
 |-------------|-------|
 | bash 3.2+ | Comes with macOS and Linux |
 | git | Optional — for version-controlling your vault |
-| Claude CLI | Optional — for scheduled automation |
-| Obsidian | Optional — recommended for vault UI |
+| Claude / any LLM | The vault is model-agnostic. Works with any AI that reads markdown. |
+| Obsidian | Optional but recommended for vault UI |
 
 No Python. No pip. No databases.
 
@@ -109,33 +160,35 @@ No Python. No pip. No databases.
 
 ## Roadmap
 
-### v0.1 (current)
-- [x] `start.sh` — single entry point with tier selection
-- [x] Interactive onboarding wizard
-- [x] Full vault structure (PARA + Agent + Systems + CoreSystem)
-- [x] Self-improvement feedback loop (`corrections.md`)
-- [x] 3-session `BOOTSTRAP.md` onboarding protocol
-- [x] `LEARN.md` contextual help files for Tier 1
-- [x] Scheduled automation (macOS launchd)
+### v0.2 (current)
+- [x] Interactive onboarding wizard with two tiers
+- [x] Planning system: day-type detection, structured greetings, Big 3 cascade
+- [x] Specialist agent architecture (CRM, calendar, inbox)
+- [x] CRM as relationship manager with auto-updates
+- [x] Background scripts (crm-scan, vault-health, pattern-check)
+- [x] Vault health scoring and pattern detection
+- [x] Quarter kickoff and ad-hoc planning support
 
-### v0.2
-- [ ] Tier 1 fully distinct from Tier 2
-- [ ] Richer skill files for research, writing, coding
-- [ ] Linux cron support
-- [ ] `--upgrade` flag for existing vaults
+### v0.3
+- [ ] Calendar MCP integration (real calendar data instead of manual input)
+- [ ] Email agent + email MCP
+- [ ] Meeting agent + transcript MCP
+- [ ] Notification/nudge system (desktop alerts for planning, follow-ups, birthdays)
+- [ ] Linux cron support (currently macOS launchd)
 
 ### v1.0
-- [ ] Tier 3 — systems picker
-- [ ] Template library
+- [ ] Model-agnostic agent runner (run specialists on any LLM provider)
+- [ ] Brain modules (users pick "Relationships", "Schedule", etc. during onboarding)
+- [ ] House Manager and Financial Manager agents
+- [ ] Calendar write mode (time blocking, meeting auditing)
 - [ ] Tested on macOS, Linux, Windows WSL
-- [ ] Stable vault structure API
 
 ---
 
 ## Docs
 
 - [Why this system works](docs/philosophy.md)
-- [Connecting Claude to your vault](docs/agent-setup.md)
+- [Connecting your AI to the vault](docs/agent-setup.md)
 - [Architecture decisions](docs/decisions/)
 
 ---
@@ -144,7 +197,7 @@ No Python. No pip. No databases.
 
 Issues and discussions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-V0.x is the right time to reshape things — if something doesn't work or could be better, please open an issue.
+This is early — if something doesn't work or could be better, please open an issue.
 
 ---
 
