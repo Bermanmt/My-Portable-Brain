@@ -1098,15 +1098,25 @@ mkd "$VAULT_ROOT/06-Agent/cron/logs"
 if [ "$MINIMAL" = false ]; then
 mkf "$VAULT_ROOT/06-Agent/cron/README.md" "# Scheduled Jobs
 
+## Pure bash (no LLM needed)
 | Job | Schedule | Output |
 |-----|----------|--------|
 | daily-briefing | ${CRON_BRIEFING:-07:30} daily | Morning section in today's daily note |
-| daily-closing | ${CRON_CLOSING:-18:00} weekdays | End-of-day to agent memory |
-| inbox-sweep | 10:00 weekdays | Inbox-processor subagent |
+| rebuild-context | 07:15 daily | 06-Agent/workspace/CONTEXT-PACK.md |
+| crm-scan | 21:00 nightly | CRM briefing (contact detection, last-contact updates) |
+| pattern-check | 21:30 nightly | 06-Agent/workspace/pending-actions.md |
+| vault-health | Sunday 20:00 | 06-Agent/workspace/vault-health.md |
+| daily-backup | 22:00 daily | Git commit of vault changes |
+
+## LLM-powered (requires Claude CLI)
+| Job | Schedule | Output |
+|-----|----------|--------|
+| daily-closing | ${CRON_CLOSING:-18:00} weekdays | End-of-day summary to agent memory |
+| inbox-sweep | 10:00 weekdays | Inbox routing suggestions |
 | weekly-review | Friday 17:00 | Draft weekly review |
-| quarterly-checkin | 1st of quarter | Quarterly planning prompt |
-| vault-lint | Friday 16:00 | 05-Meta/vault-health.md |
-| rebuild-context | 6:00 + 12:00 daily | 06-Agent/workspace/CONTEXT-PACK.md |
+
+## CLI
+Run any job manually: \\\`bash 06-Agent/brain.sh <command>\\\`
 
 ## Activate
   bash $VAULT_ROOT/06-Agent/cron/install-jobs.sh
@@ -1757,9 +1767,12 @@ mkf "$VAULT_ROOT/06-Agent/brain.sh" "#!/bin/bash
 # Usage: brain <command>
 #   inbox      Run inbox sweep
 #   briefing   Run daily briefing manually
+#   health     Run vault health check (score + hygiene report)
+#   patterns   Run pattern detection (carries, stale actions, open loops)
+#   crm-scan   Run CRM contact detection and briefing update
+#   context    Rebuild CONTEXT-PACK.md
 #   backup     Commit vault changes to git
 #   cron       Install/refresh all scheduled jobs
-#   health     Run vault health check
 
 VAULT=\"$VAULT_ROOT\"
 AGENT=\"\$VAULT/06-Agent\"
@@ -1773,19 +1786,23 @@ case \"\$cmd\" in
   briefing)
     bash \"\$CRON/daily-briefing.sh\"
     ;;
+  health)
+    bash \"\$CRON/vault-health.sh\"
+    ;;
+  patterns)
+    bash \"\$CRON/pattern-check.sh\"
+    ;;
+  crm-scan)
+    bash \"\$CRON/crm-scan.sh\"
+    ;;
+  context)
+    bash \"\$CRON/rebuild-context.sh\"
+    ;;
   backup)
     bash \"\$CRON/daily-backup.sh\"
     ;;
   cron)
     bash \"\$AGENT/cron/install-jobs.sh\"
-    ;;
-  health)
-    HEALTH=\"\$VAULT/05-Meta/vault-health.sh\"
-    if [ -f \"\$HEALTH\" ]; then
-      bash \"\$HEALTH\"
-    else
-      echo \"vault-health.sh not yet installed — coming in v1.0\"
-    fi
     ;;
   help|*)
     echo \"\"
@@ -1793,9 +1810,12 @@ case \"\$cmd\" in
     echo \"\"
     echo \"  inbox      Run inbox sweep\"
     echo \"  briefing   Run daily briefing manually\"
+    echo \"  health     Run vault health check\"
+    echo \"  patterns   Run pattern detection (carries, loops, stale actions)\"
+    echo \"  crm-scan   Run CRM contact scan and briefing update\"
+    echo \"  context    Rebuild CONTEXT-PACK.md\"
     echo \"  backup     Commit vault changes to git\"
     echo \"  cron       Install/refresh all scheduled jobs\"
-    echo \"  health     Run vault health check\"
     echo \"\"
     ;;
 esac

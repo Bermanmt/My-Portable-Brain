@@ -59,6 +59,10 @@ When Claude opens your vault, it reads files in this order:
 4. `06-Agent/workspace/USER.md` — your profile
 5. `06-Agent/workspace/memory.md` — long-term context
 6. Today's memory log — what happened recently
+7. Specialist briefings — `06-Agent/subagents/*/briefing.md` (CRM follow-ups, calendar context)
+8. Vault health + pending actions — `06-Agent/workspace/vault-health.md` and `pending-actions.md`
+9. Inbox check — item count, flags if overloaded
+10. Day type detection — determines which greeting format to use (Monday, regular, Friday, quarterly, quarter kickoff)
 
 This happens every session. The agent has no memory between sessions — the files *are* the memory.
 
@@ -80,8 +84,12 @@ launchctl list | grep com.brain
 
 **Jobs installed:**
 - `07:30` daily — morning briefing written to your daily note
+- `07:15` daily — context pack rebuild (CONTEXT-PACK.md)
 - `18:00` weekdays — end-of-day summary to agent memory
 - `10:00` weekdays — inbox sweep suggestions
+- `21:00` nightly — CRM scan (contact detection, last-contact updates, briefing refresh)
+- `21:30` nightly — pattern check (recurring carries, stale actions, open loops)
+- `Sunday 20:00` — vault health check (hygiene score, stale projects, inbox health)
 - `Friday 17:00` — weekly review draft
 
 Logs live in `06-Agent/cron/logs/`.
