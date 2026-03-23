@@ -1,0 +1,4 @@
+# Closed
+
+| Contact | Outcome | Date |
+|---------|---------|------|

@@ -634,18 +634,24 @@ success "CLAUDE.md"
 
 # --- 00-Inbox ---
 mkd "$VAULT_ROOT/00-Inbox/unsorted"
+mkd "$VAULT_ROOT/00-Inbox/meetings"
+mkd "$VAULT_ROOT/00-Inbox/emails"
+mkd "$VAULT_ROOT/00-Inbox/captures"
 mkf "$VAULT_ROOT/00-Inbox/README.md" "# 00-Inbox
 
 Everything new lands here first. Never file directly into Projects or Areas.
-Sort during your weekly review.
+Your agent processes and routes items during inbox sweeps.
 
 - [[quick-notes]] — one-line captures
 - [[links]] — URLs to process
 - [[unsorted/]] — drop files here if you don't know where they go
+- meetings/ — meeting transcripts and summaries (from MCP or manual)
+- emails/ — email summaries (from MCP or manual)
+- captures/ — anything else that lands here
 "
 mkf "$VAULT_ROOT/00-Inbox/quick-notes.md" "# Quick Notes
 
-Capture anything here. One line per idea. Sort during weekly review.
+Capture anything here. Your agent will process and file it during inbox sweeps.
 
 ---
 "
@@ -997,77 +1003,35 @@ success "06-Agent/workspace/"
     "$VAULT_ROOT/06-Agent/LEARN.md"
 
 # --- Subagents ---
+# Core subagents (always created)
 mkd "$VAULT_ROOT/06-Agent/subagents/inbox-processor"
-mkf "$VAULT_ROOT/06-Agent/subagents/inbox-processor/AGENT.md" "# Inbox Processor
+stamp_template "$TEMPLATES_DIR/agent/subagents/inbox-processor/AGENT.md" \
+    "$VAULT_ROOT/06-Agent/subagents/inbox-processor/AGENT.md"
 
-## Purpose
-Process 00-Inbox and suggest filing destinations for ${USER_NAME}.
+mkd "$VAULT_ROOT/06-Agent/subagents/crm-manager"
+stamp_template "$TEMPLATES_DIR/agent/subagents/crm-manager/AGENT.md" \
+    "$VAULT_ROOT/06-Agent/subagents/crm-manager/AGENT.md"
+cp "$TEMPLATES_DIR/agent/subagents/crm-manager/briefing.md" \
+    "$VAULT_ROOT/06-Agent/subagents/crm-manager/briefing.md"
+cp "$TEMPLATES_DIR/agent/subagents/crm-manager/processing-log.md" \
+    "$VAULT_ROOT/06-Agent/subagents/crm-manager/processing-log.md"
 
-## Access
-- Read/write: 00-Inbox/
-- Read: 05-Meta/conventions.md, 01-Projects/, 02-Areas/, 03-Resources/
-
-## Process
-1. Read all files in 00-Inbox/
-2. Suggest destination per item based on conventions.md
-3. Present suggestions before moving anything
-4. Mark items needing ${USER_NAME}'s decision as [NEEDS DECISION]
-
-## Output
-List of items, destinations, and decisions needed.
-"
+mkd "$VAULT_ROOT/06-Agent/subagents/calendar-agent"
+stamp_template "$TEMPLATES_DIR/agent/subagents/calendar-agent/AGENT.md" \
+    "$VAULT_ROOT/06-Agent/subagents/calendar-agent/AGENT.md"
+cp "$TEMPLATES_DIR/agent/subagents/calendar-agent/briefing.md" \
+    "$VAULT_ROOT/06-Agent/subagents/calendar-agent/briefing.md"
+cp "$TEMPLATES_DIR/agent/subagents/calendar-agent/processing-log.md" \
+    "$VAULT_ROOT/06-Agent/subagents/calendar-agent/processing-log.md"
 
 if [ "$MINIMAL" = false ]; then
-mkd "$VAULT_ROOT/06-Agent/subagents/crm-manager"
-mkf "$VAULT_ROOT/06-Agent/subagents/crm-manager/AGENT.md" "# CRM Manager
-
-## Purpose
-Manage contacts, log interactions, track follow-ups for ${USER_NAME}.
-
-## Access
-- Read/write: 07-Systems/CRM/ only
-- Read: 05-Meta/conventions.md
-
-## Cannot
-- Contact anyone
-- Modify files outside 07-Systems/CRM/
-- Make decisions about relationships
-
-## Output
-Summary of changes made and backlinks created.
-"
-
 mkd "$VAULT_ROOT/06-Agent/subagents/researcher"
-mkf "$VAULT_ROOT/06-Agent/subagents/researcher/AGENT.md" "# Researcher
-
-## Purpose
-Research topics and file findings to 03-Resources.
-
-## Access
-- Read/write: 03-Resources/
-- Read: 00-Inbox/, 05-Meta/conventions.md
-
-## Process
-Follow workspace/skills/research/SKILL.md
-
-## Output
-Path of file created + backlinks added.
-"
+stamp_template "$TEMPLATES_DIR/agent/subagents/researcher/AGENT.md" \
+    "$VAULT_ROOT/06-Agent/subagents/researcher/AGENT.md"
 
 mkd "$VAULT_ROOT/06-Agent/subagents/writer"
-mkf "$VAULT_ROOT/06-Agent/subagents/writer/AGENT.md" "# Writer
-
-## Purpose
-Draft documents, emails, summaries on request.
-
-## Access
-- Read: files passed by orchestrator
-- Write: only to path explicitly specified
-
-## Style
-Follow workspace/skills/writing/SKILL.md
-Always present draft before writing to file.
-"
+stamp_template "$TEMPLATES_DIR/agent/subagents/writer/AGENT.md" \
+    "$VAULT_ROOT/06-Agent/subagents/writer/AGENT.md"
 fi
 success "06-Agent/subagents/"
 
@@ -1251,6 +1215,10 @@ run_llm() {
 # daily-briefing: data-driven, no LLM needed for basic stats
 cp "$TEMPLATES_DIR/cron/jobs/daily-briefing.sh" "$VAULT_ROOT/06-Agent/cron/jobs/daily-briefing.sh"
 success "06-Agent/cron/jobs/daily-briefing.sh (from template)"
+
+# CRM scan: nightly contact detection and briefing update
+cp "$TEMPLATES_DIR/cron/jobs/crm-scan.sh" "$VAULT_ROOT/06-Agent/cron/jobs/crm-scan.sh"
+success "06-Agent/cron/jobs/crm-scan.sh (from template)"
 
 if [ "$MINIMAL" = false ]; then
 mkf "$VAULT_ROOT/06-Agent/cron/jobs/daily-closing.sh" "#!/bin/bash
@@ -1829,55 +1797,21 @@ Operational systems — the recurring infrastructure of your life.
 | goals/ | Daily, weekly, quarterly, yearly planning |
 "
 
-# --- 07-Systems CRM ---
+# --- 07-Systems CRM (Relationship Manager) ---
 mkd "$VAULT_ROOT/07-Systems/CRM/contacts"
 mkd "$VAULT_ROOT/07-Systems/CRM/pipeline"
 mkd "$VAULT_ROOT/07-Systems/CRM/interactions"
 
-mkf "$VAULT_ROOT/07-Systems/CRM/_index.md" "# CRM
-
-## Pipeline
-- [[pipeline/leads]] · [[pipeline/active]] · [[pipeline/closed]]
-
-## Follow-ups Due
-(${AGENT_NAME} updates this during morning briefing)
-"
-mkf "$VAULT_ROOT/07-Systems/CRM/_template-contact.md" "---
-tags: [crm, contact]
-status: active
-last-contact:
-next-action:
-next-action-date:
----
-
-# Full Name
-
-**Role:**
-**Company:** [[]]
-**Met via:** [[]]
-
-## Context
-
-## Interaction Log
-
-## Open Loops
-- [ ]
-"
-mkf "$VAULT_ROOT/07-Systems/CRM/pipeline/leads.md" "# Leads
-
-| Contact | Source | Added | Next Action |
-|---------|--------|-------|-------------|
-"
-mkf "$VAULT_ROOT/07-Systems/CRM/pipeline/active.md" "# Active
-
-| Contact | Last Contact | Next Action | Due |
-|---------|-------------|-------------|-----|
-"
-mkf "$VAULT_ROOT/07-Systems/CRM/pipeline/closed.md" "# Closed
-
-| Contact | Outcome | Date |
-|---------|---------|------|
-"
+stamp_template "$TEMPLATES_DIR/crm/_index.md" \
+    "$VAULT_ROOT/07-Systems/CRM/_index.md"
+cp "$TEMPLATES_DIR/crm/_template-contact.md" \
+    "$VAULT_ROOT/07-Systems/CRM/_template-contact.md"
+cp "$TEMPLATES_DIR/crm/pipeline/leads.md" \
+    "$VAULT_ROOT/07-Systems/CRM/pipeline/leads.md"
+cp "$TEMPLATES_DIR/crm/pipeline/active.md" \
+    "$VAULT_ROOT/07-Systems/CRM/pipeline/active.md"
+cp "$TEMPLATES_DIR/crm/pipeline/closed.md" \
+    "$VAULT_ROOT/07-Systems/CRM/pipeline/closed.md"
 
 # --- 07-Systems Finances ---
 mkd "$VAULT_ROOT/07-Systems/finances"
