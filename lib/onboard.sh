@@ -1947,6 +1947,7 @@ mkf "$VAULT_ROOT/06-Agent/brain.sh" "#!/bin/bash
 #   context    Rebuild CONTEXT-PACK.md
 #   backup     Commit vault changes to git
 #   cron       Install/refresh all scheduled jobs
+#   update     Upgrade vault to latest version from repo
 
 VAULT=\"$VAULT_ROOT\"
 AGENT=\"\$VAULT/06-Agent\"
@@ -1978,6 +1979,23 @@ case \"\$cmd\" in
   cron)
     bash \"\$AGENT/cron/install-jobs.sh\"
     ;;
+  update)
+    # Find repo — check if brain.sh is a symlink, follow it back to repo
+    BRAIN_SH=\"\$(readlink -f \"\$0\" 2>/dev/null || readlink \"\$0\" 2>/dev/null || echo \"\$0\")\"
+    REPO_LIB=\"\$(dirname \"\$BRAIN_SH\")/../lib\"
+    if [ ! -f \"\$REPO_LIB/../lib/upgrade.sh\" ]; then
+        # Try relative to vault
+        REPO_LIB=\"\$VAULT/../01-Projects/portable-brain/Portable-Brain/lib\"
+    fi
+    if [ -f \"\$REPO_LIB/upgrade.sh\" ]; then
+        bash \"\$REPO_LIB/upgrade.sh\" \"\$VAULT\"
+    else
+        echo \"\"
+        echo \"  Could not find upgrade.sh.\"
+        echo \"  Run directly: bash /path/to/Portable-Brain/lib/upgrade.sh \$VAULT\"
+        echo \"\"
+    fi
+    ;;
   help|*)
     echo \"\"
     echo \"  brain <command>\"
@@ -1990,6 +2008,7 @@ case \"\$cmd\" in
     echo \"  context    Rebuild CONTEXT-PACK.md\"
     echo \"  backup     Commit vault changes to git\"
     echo \"  cron       Install/refresh all scheduled jobs\"
+    echo \"  update     Upgrade vault to latest version from repo\"
     echo \"\"
     ;;
 esac
