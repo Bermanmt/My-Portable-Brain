@@ -203,37 +203,38 @@ MINIMAL=false
 
 clear
 echo ""
-echo -e "${BOLD}${MAGENTA}"
-cat << 'EOF'
-  ██████╗ ██████╗  █████╗ ██╗███╗   ██╗
-  ██╔══██╗██╔══██╗██╔══██╗██║████╗  ██║
-  ██████╔╝██████╔╝███████║██║██╔██╗ ██║
-  ██╔══██╗██╔══██╗██╔══██║██║██║╚██╗██║
-  ██████╔╝██║  ██║██║  ██║██║██║ ╚████║
-  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝
+echo -e "${BOLD}Hey.${NC}"
+echo ""
+echo -e "I'm setting up your Brain — a system that organizes"
+echo -e "your work and life so you don't have to think about"
+echo -e "the system. You just capture things. I handle the rest."
+echo ""
 
-  V A U L T   O N B O A R D I N G
-EOF
-echo -e "${NC}"
-echo -e "${DIM}  Personal knowledge system + AI agent setup${NC}"
-echo -e "${DIM}  Takes about 5 minutes. Your answers shape the vault.${NC}"
-echo ""
-divider
-echo ""
-echo -e "  This wizard will:"
-echo -e "  ${GREEN}✓${NC} Ask you ~15 questions about yourself and how you work"
-echo -e "  ${GREEN}✓${NC} Generate a full vault with your answers baked in"
-echo -e "  ${GREEN}✓${NC} Create your agent's personality and memory files"
-echo -e "  ${GREEN}✓${NC} Set up your planning structure for today, this week, this quarter"
-echo -e "  ${GREEN}✓${NC} Wire up CRM, finances, and your core system"
-echo ""
 if [ "$DRY_RUN" = true ]; then
     warn "DRY RUN mode — no files will be created"
     echo ""
 fi
+
+FIRST_CAPTURE=""
 if [ -z "$CONFIG_FILE" ]; then
-    echo -ne "  Press ${BOLD}Enter${NC} to begin, or ${BOLD}Ctrl+C${NC} to exit: "
-    read -r
+    echo -e "${DIM}Before I ask you anything —${NC}"
+    echo ""
+    echo -e "${BOLD}What's the one thing on your mind right now"
+    echo -e "that you haven't dealt with yet?${NC}"
+    echo ""
+    echo -ne "  → "
+    read -r FIRST_CAPTURE
+    echo ""
+    if [ -n "$FIRST_CAPTURE" ]; then
+        echo -e "${GREEN}Got it.${NC} I'll make sure that doesn't get lost."
+    else
+        echo -e "${DIM}No worries — we'll capture things as we go.${NC}"
+    fi
+    echo ""
+    echo -e "${DIM}Now let me learn a little about you so I can"
+    echo -e "set everything up properly.${NC}"
+    echo ""
+    sleep 1
 fi
 
 # =============================================================================
@@ -549,6 +550,41 @@ hint "Strongly recommended. You can always add a private remote later."
 ask_yn "Initialize vault as a git repository?" "y" INIT_GIT
 
 # =============================================================================
+# PATH FORK — Calm vs Eager
+# =============================================================================
+
+ONBOARDING_PATH="calm"
+BRAIN_DUMP_PROJECTS=""
+INITIAL_CONTACTS=""
+DETECTED_TOOLS=""
+
+echo ""
+echo -e "  Before I build everything —"
+echo ""
+echo -e "  ${BOLD}1)${NC} Show me how it works first, I'll add more as I go"
+echo -e "  ${BOLD}2)${NC} Let's get more of my world in here now"
+echo ""
+echo -ne "  → "
+read -r PATH_CHOICE
+
+if [[ "$PATH_CHOICE" == "2" ]]; then
+    ONBOARDING_PATH="eager"
+    echo ""
+    echo -e "Perfect. Let's get your world in here."
+    echo -e "${DIM}Just answer naturally — I'll sort everything.${NC}"
+
+    ask_multiline "What are you currently working on?" "List as many as come to mind." BRAIN_DUMP_PROJECTS
+
+    echo ""
+    echo -e "${BOLD}Who are the 2-3 people most important to your work right now?${NC}"
+    echo -e "${DIM}First names or full names — whatever comes naturally.${NC}"
+    ask_multiline "" "" INITIAL_CONTACTS
+
+    echo ""
+    ask "Any tools you use daily that you'd want connected?" "" DETECTED_TOOLS
+fi
+
+# =============================================================================
 # CONFIRMATION
 # =============================================================================
 
@@ -663,6 +699,49 @@ mkf "$VAULT_ROOT/00-Inbox/links.md" "# Links to Process
 [ "$VAULT_TIER" = "1" ] && stamp_template \
     "$TEMPLATES_DIR/learn/00-inbox.md" \
     "$VAULT_ROOT/00-Inbox/LEARN.md"
+# Write first capture if provided
+if [ -n "$FIRST_CAPTURE" ]; then
+    mkf "$VAULT_ROOT/00-Inbox/first-capture.md" "# First Capture — $today
+
+$FIRST_CAPTURE
+
+---
+*Captured during onboarding. Agent to process on first session.*
+"
+    success "First capture saved to inbox"
+fi
+
+# Write brain dump from eager path
+if [ "$ONBOARDING_PATH" = "eager" ]; then
+    BRAIN_DUMP_CONTENT=""
+    if [ -n "$BRAIN_DUMP_PROJECTS" ]; then
+        BRAIN_DUMP_CONTENT="## Projects mentioned
+$BRAIN_DUMP_PROJECTS
+"
+    fi
+    if [ -n "$INITIAL_CONTACTS" ]; then
+        BRAIN_DUMP_CONTENT="${BRAIN_DUMP_CONTENT}
+## Key people
+$INITIAL_CONTACTS
+"
+    fi
+    if [ -n "$DETECTED_TOOLS" ]; then
+        BRAIN_DUMP_CONTENT="${BRAIN_DUMP_CONTENT}
+## Tools used
+$DETECTED_TOOLS
+"
+    fi
+    if [ -n "$BRAIN_DUMP_CONTENT" ]; then
+        mkf "$VAULT_ROOT/00-Inbox/brain-dump.md" "# Brain Dump — $today
+
+*Captured during onboarding (eager path). Agent to process on first session:
+create projects, add contacts to CRM, log tools in observations.*
+
+$BRAIN_DUMP_CONTENT"
+        success "Brain dump saved to inbox"
+    fi
+fi
+
 success "00-Inbox/"
 
 # --- 01-Projects ---
@@ -752,14 +831,55 @@ area: $area
 
 # $area_title
 
-## Standard
-What does \"good enough\" look like here?
-
 ## Active Projects
 - [[01-Projects/]]
 
 ## Goals
 - [[$year-$quarter]]
+"
+
+    mkf "$VAULT_ROOT/02-Areas/$area/STATE.md" "---
+area: $area
+updated: $today
+---
+# $area_title — Current Situation
+
+*The agent maintains this file. It reflects what is true right now.*
+
+## Where Things Stand
+(Agent updates this from conversations and observations)
+
+## What Needs Attention
+(Agent surfaces this in morning briefing when relevant)
+"
+
+    mkf "$VAULT_ROOT/02-Areas/$area/GOALS.md" "---
+area: $area
+---
+# $area_title — Ongoing Intentions
+
+*Not projects — these never finish. Just directions you're heading.*
+
+## Intentions
+(Agent populates from your conversations)
+
+## Standards
+What does \"good enough\" look like here?
+"
+
+    mkf "$VAULT_ROOT/02-Areas/$area/RULES.md" "---
+area: $area
+---
+# $area_title — How I Think About This
+
+*Agent reads this before anything related to $area.*
+*Update when your thinking changes.*
+
+## My Rules for $area_title
+(Agent populates from corrections and stated preferences)
+
+## What I Never Do Here
+(Agent updates when you say \"never\" or \"always\" about this area)
 "
 done
 success "02-Areas/"
@@ -863,6 +983,7 @@ ${AGENT_NAME}'s runtime — memory, automation, and operating instructions.
 Never put personal notes here. This folder belongs to ${AGENT_NAME}.
 "
 mkd "$VAULT_ROOT/06-Agent/workspace/memory"
+mkd "$VAULT_ROOT/06-Agent/state"
 mkd "$VAULT_ROOT/06-Agent/workspace/skills/research"
 mkd "$VAULT_ROOT/06-Agent/workspace/skills/writing"
 mkd "$VAULT_ROOT/06-Agent/workspace/skills/coding"
@@ -1007,6 +1128,59 @@ mkf "$VAULT_ROOT/06-Agent/workspace/pending-actions.md" "# Pending Actions & Pat
 *Generated: $today · 0 items detected*
 
 Run \`bash 06-Agent/cron/jobs/pattern-check.sh\` to scan for pending actions.
+"
+
+mkf "$VAULT_ROOT/06-Agent/workspace/observations.md" "---
+started: $today
+---
+# Agent Observations
+
+*Private pattern map. Never shown to user directly.*
+*Feeds proposals after 14+ days of consistent signal.*
+
+## Topics Recurring
+(Agent tracks here — topic, count, first seen, last seen)
+
+## Behavioral Patterns
+(Capture time, response patterns, preferred formats, energy by day-of-week)
+
+## Tools Detected
+(External tools mentioned — feeds integration discovery)
+
+## People Signals
+(Contacts mentioned frequently — seeds CRM proposals)
+
+## Emotional Signals
+(Areas of stress, excitement, avoidance — informs greeting tone)
+
+## Emerging Areas
+(Topics approaching the proposal threshold)
+"
+
+mkf "$VAULT_ROOT/06-Agent/state/handoff.md" "---
+updated: $today
+---
+# Session Handoff
+
+*Agent writes here at end of every session. Agent reads here at start of every session.*
+
+## Last Session
+(Nothing yet — first session pending)
+
+## Open Loops
+(Things started but not finished — carry forward until resolved)
+
+## Proposals Declined
+(User said \"not yet\" — with date, so agent knows when to revisit)
+
+## Next Session Context
+(What the agent should know going in — primed context, follow-ups promised, mood/energy signals)
+"
+
+mkf "$VAULT_ROOT/06-Agent/state/created.md" "---
+created: $today
+---
+Vault created on $today via onboard.sh.
 "
 
 success "06-Agent/workspace/"
