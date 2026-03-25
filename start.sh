@@ -30,6 +30,7 @@ NC='\033[0m'
 DRY_RUN=false
 PRESET_VAULT=""
 PRESET_TIER=""
+SIMPLE_MODE=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -37,9 +38,15 @@ while [[ $# -gt 0 ]]; do
         --vault)     PRESET_VAULT="$2"; shift ;;
         --tier)      PRESET_TIER="$2"; shift ;;
         --minimal)   PRESET_TIER="3" ;;
+        --simple)    SIMPLE_MODE=true ;;
     esac
     shift
 done
+
+# Simple mode: auto-select Tier 2, pass --simple to onboard.sh
+if [ "$SIMPLE_MODE" = true ]; then
+    PRESET_TIER="2"
+fi
 
 # --- Helpers ---
 divider() { echo -e "${DIM}$(printf '─%.0s' {1..60})${NC}"; }
@@ -62,7 +69,7 @@ cat << 'EOF'
   ╚══════════════════════════════════════════╝
 EOF
 echo -e "${NC}"
-echo -e "  ${DIM}v0.2 — github.com/Bermanmt/My-Portable-Brain${NC}"
+echo -e "  ${DIM}v0.3 — github.com/Bermanmt/My-Portable-Brain${NC}"
 echo ""
 divider
 echo ""
@@ -103,7 +110,7 @@ if [ "$MISSING" = true ]; then
     exit 1
 fi
 
-if ! command -v "claude" &>/dev/null; then
+if [ "$SIMPLE_MODE" != true ] && ! command -v "claude" &>/dev/null; then
     echo -e "  ${DIM}Claude CLI not found. Vault will be created but automated jobs${NC}"
     echo -e "  ${DIM}won't run. Install later: https://claude.ai/code${NC}"
     echo ""
@@ -113,37 +120,41 @@ fi
 # TIER SELECTION
 # =============================================================================
 
-section "Choose your setup"
-echo ""
-echo -e "  ${BOLD}Tier 1 — Lean${NC}"
-echo -e "  ${DIM}Minimal structure. Every folder explains itself.${NC}"
-echo -e "  ${DIM}Best if you're new to PARA or want to start simple.${NC}"
-echo ""
-echo -e "  ${BOLD}Tier 2 — Full${NC}"
-echo -e "  ${DIM}Complete vault with all systems pre-built.${NC}"
-echo -e "  ${DIM}Best if you're ready to use everything from day one.${NC}"
-echo ""
-echo -e "  ${BOLD}Tier 3 — Minimal${NC}"
-echo -e "  ${DIM}Core vault only. Essential files + one cron job.${NC}"
-echo -e "  ${DIM}Best if you want to try the system first.${NC}"
-echo ""
-
-if [ -n "$PRESET_TIER" ]; then
-    TIER="$PRESET_TIER"
-    info "Using tier $TIER (from --tier flag)"
-else
-    echo -ne "  ${BOLD}Which tier?${NC} ${DIM}[1/2/3, default: 2]${NC}: "
-    read -r input
-    TIER="${input:-2}"
-fi
-
-if [ "$TIER" != "1" ] && [ "$TIER" != "2" ] && [ "$TIER" != "3" ]; then
-    warn "Invalid selection — defaulting to Tier 2."
+if [ "$SIMPLE_MODE" = true ]; then
     TIER="2"
-fi
+else
+    section "Choose your setup"
+    echo ""
+    echo -e "  ${BOLD}Tier 1 — Lean${NC}"
+    echo -e "  ${DIM}Minimal structure. Every folder explains itself.${NC}"
+    echo -e "  ${DIM}Best if you're new to PARA or want to start simple.${NC}"
+    echo ""
+    echo -e "  ${BOLD}Tier 2 — Full${NC}"
+    echo -e "  ${DIM}Complete vault with all systems pre-built.${NC}"
+    echo -e "  ${DIM}Best if you're ready to use everything from day one.${NC}"
+    echo ""
+    echo -e "  ${BOLD}Tier 3 — Minimal${NC}"
+    echo -e "  ${DIM}Core vault only. Essential files + one cron job.${NC}"
+    echo -e "  ${DIM}Best if you want to try the system first.${NC}"
+    echo ""
 
-echo ""
-success "Tier $TIER — $([ "$TIER" = "1" ] && echo 'Lean' || [ "$TIER" = "2" ] && echo 'Full' || echo 'Minimal')"
+    if [ -n "$PRESET_TIER" ]; then
+        TIER="$PRESET_TIER"
+        info "Using tier $TIER (from --tier flag)"
+    else
+        echo -ne "  ${BOLD}Which tier?${NC} ${DIM}[1/2/3, default: 2]${NC}: "
+        read -r input
+        TIER="${input:-2}"
+    fi
+
+    if [ "$TIER" != "1" ] && [ "$TIER" != "2" ] && [ "$TIER" != "3" ]; then
+        warn "Invalid selection — defaulting to Tier 2."
+        TIER="2"
+    fi
+
+    echo ""
+    success "Tier $TIER — $([ "$TIER" = "1" ] && echo 'Lean' || [ "$TIER" = "2" ] && echo 'Full' || echo 'Minimal')"
+fi
 
 # =============================================================================
 # RUN ONBOARDING
@@ -153,8 +164,9 @@ section "Personalizing your vault"
 echo ""
 
 ONBOARD_FLAGS=""
-[ "$DRY_RUN" = true ]    && ONBOARD_FLAGS="$ONBOARD_FLAGS --dry-run"
-[ -n "$PRESET_VAULT" ]   && ONBOARD_FLAGS="$ONBOARD_FLAGS --vault $PRESET_VAULT"
+[ "$DRY_RUN" = true ]      && ONBOARD_FLAGS="$ONBOARD_FLAGS --dry-run"
+[ -n "$PRESET_VAULT" ]     && ONBOARD_FLAGS="$ONBOARD_FLAGS --vault $PRESET_VAULT"
+[ "$SIMPLE_MODE" = true ]  && ONBOARD_FLAGS="$ONBOARD_FLAGS --simple"
 
 # Export tier so onboard.sh and build scripts can read it
 export BRAIN_TIER="$TIER"
@@ -189,11 +201,13 @@ echo ""
 echo -e "  ${BOLD}${GREEN}🧠 Your vault is ready.${NC}"
 echo ""
 echo -e "  ${BOLD}Location:${NC}  $VAULT_ROOT"
-echo -e "  ${BOLD}Tier:${NC}      $TIER — $([ "$TIER" = "1" ] && echo 'Lean' || [ "$TIER" = "2" ] && echo 'Full' || echo 'Minimal')"
+if [ "$SIMPLE_MODE" != true ]; then
+    echo -e "  ${BOLD}Tier:${NC}      $TIER — $([ "$TIER" = "1" ] && echo 'Lean' || [ "$TIER" = "2" ] && echo 'Full' || echo 'Minimal')"
+fi
 echo ""
 divider
 echo ""
-echo -e "  ${BOLD}Do this right now — before closing this window:${NC}"
+echo -e "  ${BOLD}What to do next:${NC}"
 echo ""
 echo -e "  ${CYAN}Step 1${NC}  Open ${BOLD}$VAULT_ROOT${NC} in Obsidian"
 echo -e "          File → Open Vault → select that folder"
@@ -206,7 +220,7 @@ echo -e "  ${CYAN}Step 3${NC}  Open the vault in Claude Code or Claude Cowork"
 echo -e "          It reads CLAUDE.md automatically."
 echo -e "          Your agent will introduce itself and guide you from there."
 echo ""
-if command -v "claude" &>/dev/null; then
+if [ "$SIMPLE_MODE" != true ] && command -v "claude" &>/dev/null; then
     echo -e "  ${CYAN}Step 4${NC}  (Optional) Activate scheduled briefings:"
     echo -e "          ${DIM}bash $VAULT_ROOT/06-Agent/cron/install-jobs.sh${NC}"
     echo ""

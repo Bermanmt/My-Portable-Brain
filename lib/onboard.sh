@@ -70,11 +70,13 @@ NC='\033[0m'
 DRY_RUN=false
 PRESET_VAULT=""
 CONFIG_FILE=""
+SIMPLE_MODE=false
 
 NEXT_IS=""
 for arg in "$@"; do
     case "$arg" in
         --dry-run) DRY_RUN=true ;;
+        --simple) SIMPLE_MODE=true ;;
         --vault) NEXT_IS="vault" ;;
         --config) NEXT_IS="config" ;;
         *)
@@ -379,10 +381,18 @@ else
 # SECTION 2 — ABOUT YOU
 # =============================================================================
 
-section "② About you"
+if [ "$SIMPLE_MODE" = true ]; then
+    section "Let's get to know you"
+else
+    section "② About you"
+fi
 
 echo ""
-echo -e "  This fills your ${CYAN}USER.md${NC} — what the agent knows about you."
+if [ "$SIMPLE_MODE" = true ]; then
+    echo -e "  A few quick questions so your assistant knows who you are."
+else
+    echo -e "  This fills your ${CYAN}USER.md${NC} — what the agent knows about you."
+fi
 echo ""
 
 ask "Your name" "" USER_NAME
@@ -391,31 +401,52 @@ ask "Your location (city, country)" "" USER_LOCATION
 ask "Your working hours" "9am–6pm weekdays" USER_HOURS
 ask "What do you do? (one line, e.g. 'Indie founder, building B2B SaaS')" "" USER_ROLE
 
-echo ""
-label "Your tech stack / main tools (e.g. TypeScript, Postgres, Notion)"
-hint "Leave blank if not relevant"
-ask "" "" USER_STACK
+if [ "$SIMPLE_MODE" != true ]; then
+    echo ""
+    label "Your tech stack / main tools (e.g. TypeScript, Postgres, Notion)"
+    hint "Leave blank if not relevant"
+    ask "" "" USER_STACK
+fi
 
 echo ""
-label "How do you prefer to communicate?"
-hint "e.g. 'Concise. No hand-holding. Skip the preamble.'"
+if [ "$SIMPLE_MODE" = true ]; then
+    label "How should your assistant talk to you?"
+    hint "e.g. 'Keep it short' / 'Be direct' / 'Friendly and warm'"
+else
+    label "How do you prefer to communicate?"
+    hint "e.g. 'Concise. No hand-holding. Skip the preamble.'"
+fi
 ask "" "Direct and concise, no fluff" USER_COMMS
 
 echo ""
-label "Anything the agent should always know about you?"
-hint "e.g. 'I have ADHD, keep tasks small' / 'I'm learning Spanish' / 'Never schedule before 9am'"
+if [ "$SIMPLE_MODE" = true ]; then
+    label "Anything important your assistant should always know?"
+    hint "e.g. 'I'm forgetful — remind me of things' / 'Never schedule before 9am'"
+else
+    label "Anything the agent should always know about you?"
+    hint "e.g. 'I have ADHD, keep tasks small' / 'I'm learning Spanish' / 'Never schedule before 9am'"
+fi
 ask "" "" USER_ALWAYS_KNOW
 
 # =============================================================================
 # SECTION 3 — YOUR ROLES
 # =============================================================================
 
-section "③ Your life roles"
+if [ "$SIMPLE_MODE" = true ]; then
+    section "What hats do you wear?"
+else
+    section "③ Your life roles"
+fi
 
 echo ""
-echo -e "  Roles are the most important input in the whole system."
-echo -e "  The agent filters every new commitment through these."
-echo -e "  Think: what are the hats you wear in life?"
+if [ "$SIMPLE_MODE" = true ]; then
+    echo -e "  What are the main roles in your life?"
+    echo -e "  These help your assistant understand what matters to you."
+else
+    echo -e "  Roles are the most important input in the whole system."
+    echo -e "  The agent filters every new commitment through these."
+    echo -e "  Think: what are the hats you wear in life?"
+fi
 echo ""
 hint "Examples: Founder, Father, Partner, Builder, Friend, Athlete"
 hint "Aim for 4–7. Too many means no real priorities."
@@ -438,62 +469,106 @@ fi
 # SECTION 4 — YOUR AGENT
 # =============================================================================
 
-section "④ Your AI agent"
+if [ "$SIMPLE_MODE" = true ]; then
+    section "Your AI assistant"
+else
+    section "④ Your AI agent"
+fi
 
 echo ""
-echo -e "  This shapes ${CYAN}SOUL.md${NC} and ${CYAN}IDENTITY.md${NC} — the agent's personality."
-echo -e "  You can always edit these later."
+if [ "$SIMPLE_MODE" = true ]; then
+    echo -e "  Give your assistant a name and personality."
+    echo -e "  You can always change this later."
+else
+    echo -e "  This shapes ${CYAN}SOUL.md${NC} and ${CYAN}IDENTITY.md${NC} — the agent's personality."
+    echo -e "  You can always edit these later."
+fi
 echo ""
 
-ask "What should your agent be called?" "Sage" AGENT_NAME
-ask "Pick an emoji for your agent" "🧠" AGENT_EMOJI
+if [ "$SIMPLE_MODE" = true ]; then
+    ask "Give your assistant a name" "Sage" AGENT_NAME
+    ask "Pick an emoji for it" "🧠" AGENT_EMOJI
 
-echo ""
-label "Describe the agent's personality in one sentence"
-hint "e.g. 'Direct, sharp, a little dry — gets to the point fast'"
-hint "e.g. 'Warm and organized, like a great chief of staff'"
-ask "" "Direct and sharp, no fluff, honest about uncertainty" AGENT_PERSONALITY
+    echo ""
+    label "What vibe should it have?"
+    hint "e.g. 'Friendly and organized' / 'Direct and no-nonsense' / 'Warm but efficient'"
+    ask "" "Direct and sharp, no fluff, honest about uncertainty" AGENT_PERSONALITY
 
-echo ""
-label "What tone should the agent use with you?"
-hint "e.g. 'Casual, like a smart colleague' / 'Professional but warm' / 'Deadpan and efficient'"
-ask "" "Casual, like a smart friend who happens to be an expert" AGENT_TONE
+    # Use sensible defaults for tone and never in simple mode
+    AGENT_TONE="Casual, like a smart friend who happens to be an expert"
+    AGENT_NEVER="Never flatter. Never add commitments without asking. Never be vague."
+else
+    ask "What should your agent be called?" "Sage" AGENT_NAME
+    ask "Pick an emoji for your agent" "🧠" AGENT_EMOJI
 
-echo ""
-label "What should the agent NEVER do?"
-hint "e.g. 'Never flatter me' / 'Never add tasks without asking' / 'Never use bullet points for everything'"
-ask "" "Never flatter. Never add commitments without asking. Never be vague." AGENT_NEVER
+    echo ""
+    label "Describe the agent's personality in one sentence"
+    hint "e.g. 'Direct, sharp, a little dry — gets to the point fast'"
+    hint "e.g. 'Warm and organized, like a great chief of staff'"
+    ask "" "Direct and sharp, no fluff, honest about uncertainty" AGENT_PERSONALITY
+
+    echo ""
+    label "What tone should the agent use with you?"
+    hint "e.g. 'Casual, like a smart colleague' / 'Professional but warm' / 'Deadpan and efficient'"
+    ask "" "Casual, like a smart friend who happens to be an expert" AGENT_TONE
+
+    echo ""
+    label "What should the agent NEVER do?"
+    hint "e.g. 'Never flatter me' / 'Never add tasks without asking' / 'Never use bullet points for everything'"
+    ask "" "Never flatter. Never add commitments without asking. Never be vague." AGENT_NEVER
+fi
 
 # =============================================================================
 # SECTION 5 — YOUR CORE SYSTEM
 # =============================================================================
 
-section "⑤ Your core system"
+if [ "$SIMPLE_MODE" = true ]; then
+    section "What matters this year?"
 
-echo ""
-echo -e "  ${CYAN}08-CoreSystem${NC} is the foundation. A few quick ones."
-echo ""
+    echo ""
+    label "If you had to pick 3 words for $year, what would they be?"
+    hint "e.g. 'Focus, Health, Depth' — whatever feels right"
+    ask "" "" YEAR_THEMES
 
-label "What are your 3 words / themes for $year?"
-hint "e.g. 'Focus, Health, Depth' — what defines this year for you"
-ask "" "" YEAR_THEMES
+    # Defaults for skipped questions
+    YEAR_MISOGI=""
+    WORK_PRINCIPLE="Fewer things, done completely"
+else
+    section "⑤ Your core system"
 
-label "What is the ONE big thing that must happen in $year?"
-hint "Your Misogi — a challenge with real chance of failure"
-ask "" "" YEAR_MISOGI
+    echo ""
+    echo -e "  ${CYAN}08-CoreSystem${NC} is the foundation. A few quick ones."
+    echo ""
 
-label "Your main principle for how you work"
-hint "e.g. 'One thing at a time' / 'Ship before perfect' / 'Energy over time'"
-ask "" "Fewer things, done completely" WORK_PRINCIPLE
+    label "What are your 3 words / themes for $year?"
+    hint "e.g. 'Focus, Health, Depth' — what defines this year for you"
+    ask "" "" YEAR_THEMES
+
+    label "What is the ONE big thing that must happen in $year?"
+    hint "Your Misogi — a challenge with real chance of failure"
+    ask "" "" YEAR_MISOGI
+
+    label "Your main principle for how you work"
+    hint "e.g. 'One thing at a time' / 'Ship before perfect' / 'Energy over time'"
+    ask "" "Fewer things, done completely" WORK_PRINCIPLE
+fi
 
 # =============================================================================
 # SECTION 6 — CURRENT PROJECT
 # =============================================================================
 
-section "⑥ Your current main project"
+if [ "$SIMPLE_MODE" = true ]; then
+    section "What are you working on?"
+else
+    section "⑥ Your current main project"
+fi
 
 echo ""
-echo -e "  We'll create your first project in ${CYAN}01-Projects/${NC}."
+if [ "$SIMPLE_MODE" = true ]; then
+    echo -e "  Let's add your main project so your assistant can help."
+else
+    echo -e "  We'll create your first project in ${CYAN}01-Projects/${NC}."
+fi
 echo ""
 hint "You can skip this and add projects manually later"
 
@@ -507,88 +582,108 @@ if [ "$ADD_PROJECT" = true ]; then
     PROJECT_SLUG=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
 fi
 
-# =============================================================================
-# SECTION 7 — CRON JOBS
-# =============================================================================
+if [ "$SIMPLE_MODE" = true ]; then
+    # --- Simple mode: auto-activate cron, git, calm path ---
+    ACTIVATE_CRON=true
+    CRON_BRIEFING="07:30"
+    CRON_BRIEF_HOUR="07"
+    CRON_BRIEF_MIN="30"
+    CRON_CLOSING="18:00"
+    CRON_CLOSE_HOUR="18"
+    CRON_CLOSE_MIN="00"
+    INIT_GIT=true
+    ONBOARDING_PATH="calm"
+    BRAIN_DUMP_PROJECTS=""
+    INITIAL_CONTACTS=""
+    DETECTED_TOOLS=""
+else
+    # =============================================================================
+    # SECTION 7 — CRON JOBS
+    # =============================================================================
 
-section "⑦ Scheduled automation (cron)"
-
-echo ""
-echo -e "  Cron jobs wake the agent on a schedule — daily briefings,"
-echo -e "  inbox sweeps, weekly review drafts."
-echo ""
-echo -e "  Two types of jobs:"
-echo -e "  ${GREEN}✓${NC} vault-health  — pure bash, no AI, works without claude CLI"
-echo -e "  ${YELLOW}⚡${NC} briefing/review — require claude CLI installed and authenticated"
-echo ""
-warn "AI jobs will silently fail if claude CLI is not set up. Check logs at 06-Agent/cron/logs/"
-hint "You can activate these later with: brain cron"
-echo ""
-
-ask_yn "Activate cron jobs now?" "n" ACTIVATE_CRON
-
-if [ "$ACTIVATE_CRON" = true ]; then
-    ask "Daily briefing time (24h format, e.g. 07:30)" "07:30" CRON_BRIEFING
-    CRON_BRIEF_HOUR="${CRON_BRIEFING%%:*}"
-    CRON_BRIEF_MIN="${CRON_BRIEFING##*:}"
-    ask "Daily closing time (24h format, e.g. 18:00)" "18:00" CRON_CLOSING
-    CRON_CLOSE_HOUR="${CRON_CLOSING%%:*}"
-    CRON_CLOSE_MIN="${CRON_CLOSING##*:}"
-fi
-
-# =============================================================================
-# SECTION 8 — GIT
-# =============================================================================
-
-section "⑧ Version control"
-
-echo ""
-echo -e "  Your vault is your memory. Git means you can't lose it."
-echo ""
-hint "Strongly recommended. You can always add a private remote later."
-
-ask_yn "Initialize vault as a git repository?" "y" INIT_GIT
-
-# =============================================================================
-# PATH FORK — Calm vs Eager
-# =============================================================================
-
-ONBOARDING_PATH="calm"
-BRAIN_DUMP_PROJECTS=""
-INITIAL_CONTACTS=""
-DETECTED_TOOLS=""
-
-echo ""
-echo -e "  Before I build everything —"
-echo ""
-echo -e "  ${BOLD}1)${NC} Show me how it works first, I'll add more as I go"
-echo -e "  ${BOLD}2)${NC} Let's get more of my world in here now"
-echo ""
-echo -ne "  → "
-read -r PATH_CHOICE
-
-if [[ "$PATH_CHOICE" == "2" ]]; then
-    ONBOARDING_PATH="eager"
-    echo ""
-    echo -e "Perfect. Let's get your world in here."
-    echo -e "${DIM}Just answer naturally — I'll sort everything.${NC}"
-
-    ask_multiline "What are you currently working on?" "List as many as come to mind." BRAIN_DUMP_PROJECTS
+    section "⑦ Scheduled automation (cron)"
 
     echo ""
-    echo -e "${BOLD}Who are the 2-3 people most important to your work right now?${NC}"
-    echo -e "${DIM}First names or full names — whatever comes naturally.${NC}"
-    ask_multiline "" "" INITIAL_CONTACTS
+    echo -e "  Cron jobs wake the agent on a schedule — daily briefings,"
+    echo -e "  inbox sweeps, weekly review drafts."
+    echo ""
+    echo -e "  Two types of jobs:"
+    echo -e "  ${GREEN}✓${NC} vault-health  — pure bash, no AI, works without claude CLI"
+    echo -e "  ${YELLOW}⚡${NC} briefing/review — require claude CLI installed and authenticated"
+    echo ""
+    warn "AI jobs will silently fail if claude CLI is not set up. Check logs at 06-Agent/cron/logs/"
+    hint "You can activate these later with: brain cron"
+    echo ""
+
+    ask_yn "Activate cron jobs now?" "n" ACTIVATE_CRON
+
+    if [ "$ACTIVATE_CRON" = true ]; then
+        ask "Daily briefing time (24h format, e.g. 07:30)" "07:30" CRON_BRIEFING
+        CRON_BRIEF_HOUR="${CRON_BRIEFING%%:*}"
+        CRON_BRIEF_MIN="${CRON_BRIEFING##*:}"
+        ask "Daily closing time (24h format, e.g. 18:00)" "18:00" CRON_CLOSING
+        CRON_CLOSE_HOUR="${CRON_CLOSING%%:*}"
+        CRON_CLOSE_MIN="${CRON_CLOSING##*:}"
+    fi
+
+    # =============================================================================
+    # SECTION 8 — GIT
+    # =============================================================================
+
+    section "⑧ Version control"
 
     echo ""
-    ask "Any tools you use daily that you'd want connected?" "" DETECTED_TOOLS
+    echo -e "  Your vault is your memory. Git means you can't lose it."
+    echo ""
+    hint "Strongly recommended. You can always add a private remote later."
+
+    ask_yn "Initialize vault as a git repository?" "y" INIT_GIT
+
+    # =============================================================================
+    # PATH FORK — Calm vs Eager
+    # =============================================================================
+
+    ONBOARDING_PATH="calm"
+    BRAIN_DUMP_PROJECTS=""
+    INITIAL_CONTACTS=""
+    DETECTED_TOOLS=""
+
+    echo ""
+    echo -e "  Before I build everything —"
+    echo ""
+    echo -e "  ${BOLD}1)${NC} Show me how it works first, I'll add more as I go"
+    echo -e "  ${BOLD}2)${NC} Let's get more of my world in here now"
+    echo ""
+    echo -ne "  → "
+    read -r PATH_CHOICE
+
+    if [[ "$PATH_CHOICE" == "2" ]]; then
+        ONBOARDING_PATH="eager"
+        echo ""
+        echo -e "Perfect. Let's get your world in here."
+        echo -e "${DIM}Just answer naturally — I'll sort everything.${NC}"
+
+        ask_multiline "What are you currently working on?" "List as many as come to mind." BRAIN_DUMP_PROJECTS
+
+        echo ""
+        echo -e "${BOLD}Who are the 2-3 people most important to your work right now?${NC}"
+        echo -e "${DIM}First names or full names — whatever comes naturally.${NC}"
+        ask_multiline "" "" INITIAL_CONTACTS
+
+        echo ""
+        ask "Any tools you use daily that you'd want connected?" "" DETECTED_TOOLS
+    fi
 fi
 
 # =============================================================================
 # CONFIRMATION
 # =============================================================================
 
-section "⑨ Review & confirm"
+if [ "$SIMPLE_MODE" = true ]; then
+    section "Almost done — here's the summary"
+else
+    section "⑨ Review & confirm"
+fi
 
 echo ""
 echo -e "  ${BOLD}Here's what will be created:${NC}"
@@ -596,14 +691,20 @@ echo ""
 echo -e "  ${CYAN}Vault:${NC}        $VAULT_ROOT"
 echo -e "  ${CYAN}Your name:${NC}    $USER_NAME"
 echo -e "  ${CYAN}Timezone:${NC}     $USER_TIMEZONE"
-echo -e "  ${CYAN}Agent name:${NC}   $AGENT_NAME $AGENT_EMOJI"
-echo -e "  ${CYAN}Year themes:${NC}  $YEAR_THEMES"
-echo -e "  ${CYAN}Misogi:${NC}       $YEAR_MISOGI"
+echo -e "  ${CYAN}Assistant:${NC}    $AGENT_NAME $AGENT_EMOJI"
+if [ -n "$YEAR_THEMES" ]; then
+    echo -e "  ${CYAN}Year themes:${NC}  $YEAR_THEMES"
+fi
+if [ "$SIMPLE_MODE" != true ] && [ -n "$YEAR_MISOGI" ]; then
+    echo -e "  ${CYAN}Misogi:${NC}       $YEAR_MISOGI"
+fi
 if [ "$ADD_PROJECT" = true ]; then
     echo -e "  ${CYAN}Project:${NC}      $PROJECT_NAME"
 fi
-echo -e "  ${CYAN}Cron jobs:${NC}    $([ "$ACTIVATE_CRON" = true ] && echo 'yes, activating now' || echo 'no, install manually later')"
-echo -e "  ${CYAN}Git:${NC}          $([ "$INIT_GIT" = true ] && echo 'yes' || echo 'no')"
+if [ "$SIMPLE_MODE" != true ]; then
+    echo -e "  ${CYAN}Cron jobs:${NC}    $([ "$ACTIVATE_CRON" = true ] && echo 'yes, activating now' || echo 'no, install manually later')"
+    echo -e "  ${CYAN}Git:${NC}          $([ "$INIT_GIT" = true ] && echo 'yes' || echo 'no')"
+fi
 echo ""
 echo -e "  ${BOLD}Your roles:${NC}"
 while IFS= read -r role; do
