@@ -228,7 +228,7 @@ if [ -z "$CONFIG_FILE" ]; then
     read -r FIRST_CAPTURE
     echo ""
     if [ -n "$FIRST_CAPTURE" ]; then
-        echo -e "${GREEN}Got it.${NC} I'll make sure that doesn't get lost."
+        echo -e "${GREEN}Saved.${NC} Your assistant will pick this up on your first session."
     else
         echo -e "${DIM}No worries — we'll capture things as we go.${NC}"
     fi
@@ -570,16 +570,32 @@ else
     echo -e "  We'll create your first project in ${CYAN}01-Projects/${NC}."
 fi
 echo ""
-hint "You can skip this and add projects manually later"
 
-ask_yn "Add a current project now?" "y" ADD_PROJECT
+if [ "$SIMPLE_MODE" = true ]; then
+    # In simple mode, skip the y/n — just ask for the project directly
+    hint "Leave blank to skip"
+    echo ""
+    ask "What's your main project right now?" "" PROJECT_NAME
+    if [ -n "$PROJECT_NAME" ]; then
+        ADD_PROJECT=true
+        ask "One sentence: what is this project?" "" PROJECT_WHAT
+        ask "How will you know it's done?" "" PROJECT_DONE_WHEN
+        PROJECT_SLUG=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+    else
+        ADD_PROJECT=false
+    fi
+else
+    hint "You can skip this and add projects manually later"
 
-if [ "$ADD_PROJECT" = true ]; then
-    ask "Project name (e.g. 'Launch marketing site')" "" PROJECT_NAME
-    ask "One sentence: what is this project?" "" PROJECT_WHAT
-    ask "How will you know it's done?" "" PROJECT_DONE_WHEN
-    # kebab-case the project name
-    PROJECT_SLUG=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+    ask_yn "Add a current project now?" "y" ADD_PROJECT
+
+    if [ "$ADD_PROJECT" = true ]; then
+        ask "Project name (e.g. 'Launch marketing site')" "" PROJECT_NAME
+        ask "One sentence: what is this project?" "" PROJECT_WHAT
+        ask "How will you know it's done?" "" PROJECT_DONE_WHEN
+        # kebab-case the project name
+        PROJECT_SLUG=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+    fi
 fi
 
 if [ "$SIMPLE_MODE" = true ]; then
@@ -2561,9 +2577,13 @@ if [ "$ACTIVATE_CRON" = true ]; then
 fi
 
 # --- Symlink brain CLI ---
-echo ""
-echo -ne "  ${BOLD}Symlink 'brain' to /usr/local/bin?${NC} ${DIM}Type 'brain inbox' from anywhere [y/N]${NC}: "
-read -r BRAIN_LINK
+if [ "$SIMPLE_MODE" != true ]; then
+    echo ""
+    echo -ne "  ${BOLD}Symlink 'brain' to /usr/local/bin?${NC} ${DIM}Type 'brain inbox' from anywhere [y/N]${NC}: "
+    read -r BRAIN_LINK
+else
+    BRAIN_LINK=""
+fi
 if [[ "$BRAIN_LINK" =~ ^[Yy]$ ]]; then
     if ln -sf "$VAULT_ROOT/06-Agent/brain.sh" /usr/local/bin/brain 2>/dev/null; then
         success "'brain' command available — try: brain help"

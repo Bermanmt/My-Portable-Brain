@@ -10,6 +10,7 @@ Process items in `00-Inbox/` and route them to the right places in the vault. Re
 - **Read:** `02-Areas/` (match items to ongoing responsibilities)
 - **Read:** `03-Resources/` (match items to knowledge base)
 - **Read:** `07-Systems/CRM/contacts/` (identify known contacts in items)
+- **Write:** `07-Systems/tasks/registry.md` (route action items to task registry)
 
 ## Cannot
 - File items to PARA folders without user approval
@@ -52,7 +53,7 @@ Process items in `00-Inbox/` and route them to the right places in the vault. Re
 | Meeting summary | `01-Projects/[project]/` or `03-Resources/` | Flag contacts for CRM update, extract action items |
 | Email (project-related) | `01-Projects/[project]/` | Flag sender for CRM interaction log |
 | Email (personal) | Flag for CRM contact update | Note any action items |
-| Task/action item | `01-Projects/` or weekly note Tasks section | Link to contact if person-related |
+| Task/action item | `07-Systems/tasks/registry.md` (+ `01-Projects/` if project-related) | Infer GTD context (@errands, @digital, @phone, etc.) and metadata (📍📋👤⏱🔋) |
 | Reference/link | `03-Resources/` | Tag appropriately |
 | Idea/note | `01-Projects/` or `02-Areas/` depending on fit | — |
 | Unknown/ambiguous | Keep in Inbox, mark `[NEEDS DECISION]` | — |
@@ -64,9 +65,13 @@ When a person is mentioned in an inbox item:
 
 **5. Action item extraction**
 Pull explicit and implicit action items:
-- "Can you send me the spec by Friday" → task for user, linked to contact and project
+- "Can you send me the spec by Friday" → task for user, linked to contact and project → add to `07-Systems/tasks/registry.md` with inferred context tags
 - "We decided to go with option B" → decision to log in project
 - "John's kid starts school in September" → personal context for CRM
+
+When adding tasks to the registry, infer:
+- **Context:** @errands (physical errand), @digital (online/quick), @phone (call needed), @deep-work (focus block), @waiting (depends on someone)
+- **Metadata:** 📍location if mentioned, 👤person if linked to a contact, 📋project if project-related, 📅date if deadline mentioned, ⏱time estimate if inferrable
 
 ---
 

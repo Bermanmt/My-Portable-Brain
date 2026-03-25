@@ -181,6 +181,28 @@ if [ -f "$AGENT/state/pending-actions.md" ]; then
     PENDING_COUNT=$(grep -c '^\- \[ \]' "$AGENT/state/pending-actions.md" 2>/dev/null; true)
 fi
 
+# --- Task Registry ---
+TASK_REGISTRY="$VAULT/07-Systems/tasks/registry.md"
+TASK_ACTIVE_COUNT=0
+TASK_WAITING_COUNT=0
+TASK_CONTEXTS=""
+if [ -f "$TASK_REGISTRY" ]; then
+    # Count active tasks (unchecked in Active section)
+    TASK_ACTIVE_COUNT=$(sed -n '/^## Active/,/^## /p' "$TASK_REGISTRY" | grep -c '^\- \[ \]' 2>/dev/null; true)
+    # Count waiting tasks
+    TASK_WAITING_COUNT=$(sed -n '/^## Waiting/,/^## /p' "$TASK_REGISTRY" | grep -c '^\- \[ \]' 2>/dev/null; true)
+    # Count by context (only from Active section)
+    active_tasks=$(sed -n '/^## Active/,/^## /p' "$TASK_REGISTRY" | grep '^\- \[ \]' 2>/dev/null || true)
+    if [ -n "$active_tasks" ]; then
+        for ctx in errands home office digital phone deep-work waiting; do
+            count=$(echo "$active_tasks" | grep -c "@${ctx}" 2>/dev/null; true)
+            if [ "$count" -gt 0 ]; then
+                TASK_CONTEXTS="${TASK_CONTEXTS}${ctx}:${count} "
+            fi
+        done
+    fi
+fi
+
 # --- Weekly data ---
 WEEKLY_FOCUS=""
 WEEKLY_BIG3=""
@@ -277,7 +299,8 @@ BRIEFING="${BRIEFING}
 - Inbox: **${INBOX_COUNT}** items
 - Active projects: **${PROJ_COUNT}**
 - CRM follow-ups due: **${CRM_COUNT}**
-- Pending actions: **${PENDING_COUNT}**"
+- Pending actions: **${PENDING_COUNT}**
+- Tasks: **${TASK_ACTIVE_COUNT}** active${TASK_WAITING_COUNT:+, **${TASK_WAITING_COUNT}** waiting}${TASK_CONTEXTS:+ (${TASK_CONTEXTS%% })}"
 
 # --- Weekly priorities (always shown) ---
 if [ -n "$WEEKLY_FOCUS" ]; then
