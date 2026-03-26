@@ -391,13 +391,18 @@ fi
 # Replace the 🤖 Morning Briefing section (handles both fresh and re-runs)
 # Clears everything between the header+subheader and the next ---
 if grep -q '## 🤖 Morning Briefing' "$DAILY"; then
-    awk -v briefing="$BRIEFING" '
+    # Write briefing to temp file (awk -v can't handle multiline strings)
+    BRIEFING_TMP=$(mktemp)
+    echo "$BRIEFING" > "$BRIEFING_TMP"
+
+    awk -v bfile="$BRIEFING_TMP" '
     /^## 🤖 Morning Briefing/ {
         print
         getline  # print the *(agent writes this)* line
         print
         print ""
-        print briefing
+        while ((getline bline < bfile) > 0) print bline
+        close(bfile)
         # Skip all existing content until the next ---
         while ((getline line) > 0) {
             if (line == "---") {
@@ -411,6 +416,7 @@ if grep -q '## 🤖 Morning Briefing' "$DAILY"; then
     { print }
     ' "$DAILY" > "$DAILY.tmp" && mv "$DAILY.tmp" "$DAILY"
 
+    rm -f "$BRIEFING_TMP"
     echo "[$(date)] briefing written to daily note (day_type=$DAY_TYPE)" >> "$LOG"
 else
     echo "[$(date)] WARNING: Morning Briefing section not found in daily note" >> "$LOG"

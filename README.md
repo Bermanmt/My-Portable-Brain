@@ -25,22 +25,26 @@ One command. A few questions. You get:
 
 ## Quick start
 
-**Option A — Download (no Terminal needed):**
-1. [Download the latest release](https://github.com/Bermanmt/My-Portable-Brain/releases/latest) (zip file)
-2. Unzip it
-3. Double-click **`Install Brain.command`**
-4. Answer a few questions — your vault is ready
+[Download the latest release](https://github.com/Bermanmt/My-Portable-Brain/releases/latest) (zip), unzip, and run the installer for your platform:
 
-> If macOS blocks the file: right-click → Open → click "Open" in the dialog.
+| Platform | What to do |
+|----------|-----------|
+| **macOS** | Double-click **`Install Brain.command`** |
+| **Windows** | Double-click **`Install Windows Brain.bat`** |
+| **Linux** | Run `bash install.sh` |
 
-**Option B — Terminal:**
+Answer a few questions — your vault is ready in five minutes.
+
+> **macOS:** If blocked, go to System Settings → Privacy & Security → click "Open Anyway"
+>
+> **Windows:** Requires [Git for Windows](https://git-scm.com/download/win) (the installer will guide you if it's missing)
+
+**Or clone and run directly:**
 ```bash
 git clone https://github.com/Bermanmt/My-Portable-Brain
 cd My-Portable-Brain
 bash start.sh
 ```
-
-Five minutes of setup, then open your vault in Obsidian, VS Code, or any editor.
 
 **Upgrading:** Run `brain update` to get the latest features without losing your personal data.
 
