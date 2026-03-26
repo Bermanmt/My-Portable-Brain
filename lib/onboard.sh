@@ -608,6 +608,7 @@ if [ "$SIMPLE_MODE" = true ]; then
     CRON_CLOSE_HOUR="18"
     CRON_CLOSE_MIN="00"
     INIT_GIT=true
+    ENABLE_APPLE_MCP=true
     ONBOARDING_PATH="calm"
     BRAIN_DUMP_PROJECTS=""
     INITIAL_CONTACTS=""
@@ -641,6 +642,20 @@ else
         CRON_CLOSE_HOUR="${CRON_CLOSING%%:*}"
         CRON_CLOSE_MIN="${CRON_CLOSING##*:}"
     fi
+
+    # =============================================================================
+    # SECTION 7.5 — APPLE NATIVE INTEGRATIONS
+    # =============================================================================
+
+    section "7.5 Apple Native Integrations"
+
+    echo ""
+    echo -e "  Your assistant can securely read your Apple Calendar and Apple Mail"
+    echo -e "  to help you plan your day. No passwords or API keys needed."
+    echo ""
+    hint "When the agent first tries to read them, macOS will ask for your permission."
+
+    ask_yn "Enable Apple Calendar & Mail integration?" "y" ENABLE_APPLE_MCP
 
     # =============================================================================
     # SECTION 8 — GIT
@@ -720,6 +735,7 @@ fi
 if [ "$SIMPLE_MODE" != true ]; then
     echo -e "  ${CYAN}Cron jobs:${NC}    $([ "$ACTIVATE_CRON" = true ] && echo 'yes, activating now' || echo 'no, install manually later')"
     echo -e "  ${CYAN}Git:${NC}          $([ "$INIT_GIT" = true ] && echo 'yes' || echo 'no')"
+    echo -e "  ${CYAN}Apple Apps:${NC}   $([ "$ENABLE_APPLE_MCP" = true ] && echo 'yes' || echo 'no')"
 fi
 echo ""
 echo -e "  ${BOLD}Your roles:${NC}"
@@ -2633,6 +2649,41 @@ fi
 echo -e "  ${DIM}Your daily note for today is ready:${NC}"
 echo -e "  ${DIM}07-Systems/goals/daily/$today.md${NC}"
 echo ""
+
+# --- Set up Apple MCP ---
+if [ "$ENABLE_APPLE_MCP" = true ]; then
+    # Copy the shell-based MCP server into the vault
+    mkdir -p "$VAULT_ROOT/06-Agent/bin"
+    if [ -f "$SCRIPT_DIR/bin/mcp-apple.sh" ]; then
+        cp "$SCRIPT_DIR/bin/mcp-apple.sh" "$VAULT_ROOT/06-Agent/bin/mcp-apple.sh"
+        chmod +x "$VAULT_ROOT/06-Agent/bin/mcp-apple.sh"
+    fi
+
+    MCP_SCRIPT="$VAULT_ROOT/06-Agent/bin/mcp-apple.sh"
+    CLAUDE_CONFIG="$HOME/Library/Application Support/Claude/claude_desktop_config.json"
+    mkdir -p "$(dirname "$CLAUDE_CONFIG")"
+    if [ ! -f "$CLAUDE_CONFIG" ]; then
+        echo '{"mcpServers":{}}' > "$CLAUDE_CONFIG"
+    fi
+    python3 -c "
+import json
+cfg = '$CLAUDE_CONFIG'
+script = '$MCP_SCRIPT'
+try:
+    with open(cfg, 'r') as f: data = json.load(f)
+except:
+    data = {}
+if 'mcpServers' not in data: data['mcpServers'] = {}
+data['mcpServers']['portable-brain-apple'] = {
+    'command': '/bin/bash',
+    'args': [script]
+}
+with open(cfg, 'w') as f: json.dump(data, f, indent=2)
+" 2>/dev/null || true
+    echo -e "  ${GREEN}✓${NC} Apple Calendar & Mail configured — restart Claude Desktop to activate"
+    echo ""
+fi
+
 divider
 echo ""
 

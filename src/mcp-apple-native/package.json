@@ -1,0 +1,17 @@
+{
+  "name": "portable-brain-mac-mcp",
+  "version": "1.0.0",
+  "description": "MacOS native Calendar and Email MCP Server",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "bun build src/index.ts --compile --outfile ../../bin/mcp-apple-native",
+    "dev": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.11",
+    "bun": "^1.1.27"
+  }
+}
