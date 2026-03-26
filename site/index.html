@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portable Brain — Your AI's memory layer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --surface-2: #1a1a1a;
+  --surface-3: #222222;
+  --border: #2a2a2a;
+  --border-bright: #3a3a3a;
+  --text: #e0e0e0;
+  --text-dim: #777;
+  --text-muted: #555;
+  --accent: #7c6bf5;
+  --accent-dim: rgba(124, 107, 245, 0.15);
+  --accent-glow: rgba(124, 107, 245, 0.08);
+  --green: #4ade80;
+  --green-dim: rgba(74, 222, 128, 0.1);
+  --yellow: #fbbf24;
+  --red: #f87171;
+  --cyan: #22d3ee;
+  --mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* --- Scanline overlay --- */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* --- Nav --- */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  z-index: 100;
+  padding: 0 24px;
+}
+.nav-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+}
+.nav-logo {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  text-decoration: none;
+}
+.nav-logo span { color: var(--accent); }
+.nav-links { display: flex; gap: 28px; }
+.nav-links a {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--text); }
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+.hamburger svg { stroke: var(--text-dim); }
+.hamburger:hover svg { stroke: var(--text); }
+
+/* --- Hero --- */
+.hero {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 140px 24px 80px;
+  text-align: center;
+}
+.hero-badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--green);
+  background: var(--green-dim);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  padding: 4px 14px;
+  border-radius: 20px;
+  margin-bottom: 28px;
+}
+.hero h1 {
+  font-family: var(--mono);
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 700;
+  line-height: 1.15;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, #e0e0e0 0%, #7c6bf5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-sub {
+  font-size: 18px;
+  color: var(--text-dim);
+  max-width: 600px;
+  margin: 0 auto 40px;
+  line-height: 1.7;
+}
+.hero-ctas {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 48px;
+}
+.btn {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 12px 28px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: #6b5ce0;
+  box-shadow: 0 0 24px rgba(124, 107, 245, 0.3);
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-bright);
+}
+.btn-secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* --- Terminal demo --- */
+.terminal-window {
+  max-width: 680px;
+  margin: 0 auto 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  text-align: left;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.terminal-header {
+  background: var(--surface-2);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.terminal-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+}
+.terminal-dot.r { background: #ff5f57; }
+.terminal-dot.y { background: #febc2e; }
+.terminal-dot.g { background: #28c840; }
+.terminal-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+.terminal-body {
+  padding: 20px 24px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-dim);
+  overflow-x: auto;
+}
+.terminal-body .prompt { color: var(--accent); }
+.terminal-body .cmd { color: var(--text); }
+.terminal-body .comment { color: var(--text-muted); }
+.terminal-body .output { color: var(--green); }
+.terminal-body .highlight { color: var(--cyan); }
+.terminal-body .dim { color: var(--text-muted); }
+
+/* --- Section layout --- */
+.section {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 100px 24px;
+}
+.section-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+.section h2 {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+.section-desc {
+  color: var(--text-dim);
+  font-size: 16px;
+  max-width: 560px;
+  margin-bottom: 48px;
+}
+
+/* --- Feature grid --- */
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+.feature {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.feature:hover {
+  border-color: var(--border-bright);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+.feature-icon {
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+.feature h3 {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.feature p {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+/* --- Vault tree --- */
+.vault-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .vault-section { grid-template-columns: 1fr; gap: 32px; }
+}
+.vault-tree {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--text-dim);
+  overflow-x: auto;
+}
+.vault-tree .folder { color: var(--accent); }
+.vault-tree .file { color: var(--text-dim); }
+.vault-tree .ann { color: var(--text-muted); font-style: italic; }
+
+/* --- Day-type table --- */
+.day-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-top: 12px;
+}
+.day-table th {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.day-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.day-table td:first-child {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+  width: 120px;
+}
+.day-table td:last-child {
+  color: var(--text-dim);
+}
+.day-table tr:last-child td { border-bottom: none; }
+
+/* --- Scripts table --- */
+.scripts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+.script-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+}
+.script-name {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--green);
+  margin-bottom: 6px;
+}
+.script-desc {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+.script-schedule {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+/* --- How it works --- */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 12px;
+}
+@media (max-width: 768px) {
+  .steps { grid-template-columns: 1fr; }
+}
+.step {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px;
+  position: relative;
+}
+.step-num {
+  font-family: var(--mono);
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--accent-dim);
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  line-height: 1;
+}
+.step h3 {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.step p {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+/* --- Principles --- */
+.principles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+}
+.principle {
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+}
+.principle h3 {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.principle p {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+/* --- CTA section --- */
+.cta-section {
+  text-align: center;
+  padding: 80px 24px 120px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.cta-section h2 {
+  font-family: var(--mono);
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.cta-section p {
+  color: var(--text-dim);
+  margin-bottom: 32px;
+  font-size: 16px;
+}
+.cta-terminal {
+  max-width: 480px;
+  margin: 0 auto 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  font-family: var(--mono);
+  font-size: 14px;
+  text-align: left;
+  color: var(--text);
+  position: relative;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.cta-terminal:hover { border-color: var(--accent); }
+.cta-terminal .prompt { color: var(--accent); }
+.copy-hint {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+.cta-terminal:hover .copy-hint { color: var(--accent); }
+
+/* --- Footer --- */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 32px 24px;
+  text-align: center;
+}
+footer p {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+footer a {
+  color: var(--text-dim);
+  text-decoration: none;
+}
+footer a:hover { color: var(--accent); }
+
+/* --- Divider --- */
+.divider {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.divider hr {
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+/* --- Animations --- */
+.fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   MOBILE — max-width: 640px
+   ========================================================================== */
+@media (max-width: 640px) {
+
+  /* Nav: collapse to hamburger */
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 56px;
+    left: 0; right: 0;
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(12px);
+    flex-direction: column;
+    padding: 16px 24px;
+    gap: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-links.open { display: flex; }
+  .hamburger { display: block !important; }
+  nav { padding: 0 16px; }
+
+  /* Hero */
+  .hero { padding: 100px 16px 48px; }
+  .hero h1 { font-size: 28px; }
+  .hero-sub { font-size: 15px; margin-bottom: 28px; }
+  .hero-ctas { flex-direction: column; align-items: stretch; gap: 12px; }
+  .btn { text-align: center; padding: 14px 20px; font-size: 14px; }
+
+  /* Terminal demo */
+  .terminal-window { margin: 0 -4px; border-radius: 8px; }
+  .terminal-body { padding: 16px; font-size: 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+  .terminal-header { padding: 8px 12px; }
+  .terminal-dot { width: 10px; height: 10px; }
+
+  /* Sections */
+  .section { padding: 60px 16px; }
+  .section h2 { font-size: 22px; }
+  .section-desc { font-size: 14px; }
+
+  /* Feature grid: single column */
+  .features { grid-template-columns: 1fr; gap: 14px; }
+  .feature { padding: 20px; }
+  .feature h3 { font-size: 14px; }
+  .feature p { font-size: 13px; }
+  .feature-icon { font-size: 20px; margin-bottom: 10px; }
+
+  /* Day table: scroll horizontally */
+  .day-table { font-size: 13px; }
+  .day-table th, .day-table td { padding: 10px 12px; }
+  .day-table td:first-child { font-size: 12px; width: auto; }
+
+  /* Vault tree */
+  .vault-tree { padding: 16px; font-size: 11px; line-height: 1.7; }
+
+  /* Scripts grid: single column */
+  .scripts-grid { grid-template-columns: 1fr; gap: 12px; }
+  .script-card { padding: 16px; }
+
+  /* Steps: single column */
+  .steps { grid-template-columns: 1fr; gap: 16px; }
+  .step { padding: 22px; }
+  .step-num { font-size: 36px; }
+
+  /* Principles: single column */
+  .principles { grid-template-columns: 1fr; gap: 0; }
+
+  /* CTA */
+  .cta-section { padding: 48px 16px 80px; }
+  .cta-section h2 { font-size: 24px; }
+  .cta-terminal { font-size: 11px; padding: 14px 16px; word-break: break-all; }
+  .copy-hint { position: static; display: block; margin-top: 8px; text-align: right; }
+
+  /* Footer */
+  footer { padding: 24px 16px; }
+  footer p { font-size: 11px; }
+
+  /* Divider */
+  .divider { padding: 0 16px; }
+}
+
+/* ==========================================================================
+   TABLET — 641px to 768px
+   ========================================================================== */
+@media (min-width: 641px) and (max-width: 768px) {
+  .nav-links { gap: 16px; }
+  .nav-links a { font-size: 12px; }
+  .hero { padding: 120px 20px 60px; }
+  .hero h1 { font-size: 36px; }
+  .features { grid-template-columns: 1fr 1fr; }
+  .steps { grid-template-columns: 1fr; }
+  .cta-terminal { font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo"><span>$</span> portable-brain</a>
+    <div class="nav-links" id="navLinks">
+      <a href="#features">Features</a>
+      <a href="#vault">Structure</a>
+      <a href="#how">How it works</a>
+      <a href="https://github.com/Bermanmt/My-Portable-Brain" target="_blank">GitHub</a>
+    </div>
+    <button class="hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')" aria-label="Menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">v0.3 — open source</div>
+  <h1>Your AI's memory layer</h1>
+  <p class="hero-sub">
+    A personal vault that gives any LLM instant context on startup.
+    Your priorities, your people, your plans — in plain markdown, owned by you.
+  </p>
+  <div class="hero-ctas">
+    <a href="https://github.com/Bermanmt/My-Portable-Brain/releases/latest" class="btn btn-primary">Download (.zip)</a>
+    <a href="https://github.com/Bermanmt/My-Portable-Brain" class="btn btn-secondary" target="_blank">View on GitHub</a>
+  </div>
+
+  <!-- Terminal demo -->
+  <div class="terminal-window">
+    <div class="terminal-header">
+      <div class="terminal-dot r"></div>
+      <div class="terminal-dot y"></div>
+      <div class="terminal-dot g"></div>
+      <span class="terminal-title">Terminal — portable-brain</span>
+    </div>
+    <div class="terminal-body">
+      <span class="comment"># One command. Five minutes. Your AI gets you.</span><br><br>
+      <span class="prompt">$</span> <span class="cmd">bash start.sh</span><br><br>
+      <span class="output">  🧠 My Portable Brain — v0.3</span><br><br>
+      <span class="dim">  Hey.</span><br>
+      <span class="dim">  What's the one thing on your mind right now</span><br>
+      <span class="dim">  that you haven't dealt with yet?</span><br><br>
+      <span class="prompt">  →</span> <span class="cmd">finish the investor deck by friday</span><br><br>
+      <span class="output">  Saved.</span> <span class="dim">Your assistant will pick this up on your first session.</span><br><br>
+      <span class="comment">  # ...a few questions later...</span><br><br>
+      <span class="output">  ✓ Vault created at ~/Brain</span><br>
+      <span class="output">  ✓ Agent configured: Sage 🧠</span><br>
+      <span class="output">  ✓ Background jobs activated (4 jobs)</span><br>
+      <span class="output">  ✓ 127 files created</span><br>
+    </div>
+  </div>
+</section>
+
+<div class="divider"><hr></div>
+
+<!-- Features -->
+<section class="section fade-in" id="features">
+  <div class="section-label">What you get</div>
+  <h2>Not another AI wrapper</h2>
+  <p class="section-desc">
+    This is the context layer. It doesn't replace your AI — it makes any AI immediately useful. Drop it in, and your assistant knows who you are.
+  </p>
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">🎯</div>
+      <h3>Planning that adapts</h3>
+      <p>Monday kickoffs, daily focus, Friday reviews, quarterly rocks. Your agent detects the day type and adapts its greeting — no manual switching.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🤝</div>
+      <h3>Relationship CRM</h3>
+      <p>Not a sales CRM. A people manager. Tracks the whole person — birthdays, gift ideas, open loops — alongside professional context. Auto-updated from your notes.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">⚡</div>
+      <h3>Background scripts</h3>
+      <p>Bash scripts run overnight — vault health scores, contact scanning, pattern detection. Free to run, no AI needed. The smart layer kicks in when you're present.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔄</div>
+      <h3>Session continuity</h3>
+      <p>Your agent writes a handoff note at the end of every session. Next morning, it picks up where you left off — no more cold starts.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">👤</div>
+      <h3>Agent with personality</h3>
+      <p>Name it, shape its tone, set boundaries. Your agent reads SOUL.md on startup and behaves the way you want — direct, warm, no-fluff, whatever.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📁</div>
+      <h3>Plain markdown</h3>
+      <p>No databases, no lock-in, no proprietary formats. Everything is .md files in folders. Works with Obsidian, VS Code, or any editor. Works forever.</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"><hr></div>
+
+<!-- Planning -->
+<section class="section fade-in">
+  <div class="section-label">Planning system</div>
+  <h2>Your agent knows what day it is</h2>
+  <p class="section-desc">
+    Different days need different conversations. The agent adapts automatically.
+  </p>
+  <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 0; overflow-x: auto;">
+    <table class="day-table">
+      <thead>
+        <tr><th>Day</th><th>What your agent does</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Monday</td><td>Last week's results, suggested Big 3 with reasoning, project pulse, calendar, follow-ups</td></tr>
+        <tr><td>Tue — Thu</td><td>Big 3 progress, today's schedule, anything needing attention</td></tr>
+        <tr><td>Friday</td><td>Week review snapshot, then a planning conversation for next week</td></tr>
+        <tr><td>Quarter end</td><td>Big Rocks status, area check, then next quarter planning</td></tr>
+        <tr><td>Ad-hoc</td><td>Say "let's do a weekly review" any day — it loads the right context</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="divider"><hr></div>
+
+<!-- Vault structure -->
+<section class="section fade-in" id="vault">
+  <div class="vault-section">
+    <div>
+      <div class="section-label">Vault structure</div>
+      <h2>Everything has a place</h2>
+      <p class="section-desc" style="margin-bottom: 24px;">
+        PARA-based folder system with agent runtime, planning cascade, and relationship intelligence built in.
+      </p>
+      <div class="principles" style="margin-top: 24px;">
+        <div class="principle">
+          <h3>Capture first</h3>
+          <p>Everything lands in the inbox. The agent routes it later.</p>
+        </div>
+        <div class="principle">
+          <h3>Projects have finish lines</h3>
+          <p>If it doesn't end, it's an area — not a project.</p>
+        </div>
+        <div class="principle">
+          <h3>Agent reads on startup</h3>
+          <p>CLAUDE.md points to the agent runtime. Any LLM picks it up.</p>
+        </div>
+        <div class="principle">
+          <h3>Two-layer intelligence</h3>
+          <p>Bash detects (free, runs overnight). LLM processes (smart, runs when you're present).</p>
+        </div>
+      </div>
+    </div>
+    <div class="vault-tree">
+      <span class="folder">~/Brain/</span><br>
+      <span class="file">├── <span class="folder">00-Inbox/</span></span> <span class="ann">← everything lands here</span><br>
+      <span class="file">│   ├── meetings/</span><br>
+      <span class="file">│   ├── emails/</span><br>
+      <span class="file">│   └── captures/</span><br>
+      <span class="file">├── <span class="folder">01-Projects/</span></span> <span class="ann">← active work</span><br>
+      <span class="file">├── <span class="folder">02-Areas/</span></span> <span class="ann">← ongoing responsibilities</span><br>
+      <span class="file">├── <span class="folder">03-Resources/</span></span> <span class="ann">← knowledge base</span><br>
+      <span class="file">├── <span class="folder">04-Archive/</span></span> <span class="ann">← done or abandoned</span><br>
+      <span class="file">├── <span class="folder">05-Meta/</span></span> <span class="ann">← how the vault works</span><br>
+      <span class="file">├── <span class="folder">06-Agent/</span></span> <span class="ann">← AI runtime</span><br>
+      <span class="file">│   ├── workspace/</span><br>
+      <span class="file">│   │   ├── AGENTS.md</span> <span class="ann">← operating instructions</span><br>
+      <span class="file">│   │   ├── SOUL.md</span> <span class="ann">← personality</span><br>
+      <span class="file">│   │   ├── USER.md</span> <span class="ann">← your profile</span><br>
+      <span class="file">│   │   └── memory.md</span> <span class="ann">← long-term context</span><br>
+      <span class="file">│   ├── state/</span><br>
+      <span class="file">│   │   ├── handoff.md</span> <span class="ann">← session continuity</span><br>
+      <span class="file">│   │   └── observations.md</span> <span class="ann">← silent patterns</span><br>
+      <span class="file">│   ├── subagents/</span> <span class="ann">← CRM, calendar, inbox</span><br>
+      <span class="file">│   └── cron/jobs/</span> <span class="ann">← background scripts</span><br>
+      <span class="file">├── <span class="folder">07-Systems/</span></span> <span class="ann">← CRM, goals, planning</span><br>
+      <span class="file">│   ├── CRM/contacts/</span><br>
+      <span class="file">│   └── goals/</span> <span class="ann">← daily → weekly → quarterly</span><br>
+      <span class="file">└── <span class="folder">08-CoreSystem/</span></span> <span class="ann">← roles, principles, values</span><br>
+    </div>
+  </div>
+</section>
+
+<div class="divider"><hr></div>
+
+<!-- Background scripts -->
+<section class="section fade-in">
+  <div class="section-label">Background intelligence</div>
+  <h2>Your vault stays alive between sessions</h2>
+  <p class="section-desc">
+    Bash scripts run on schedule — no AI tokens, no cost. They detect patterns and prepare briefings for your next session.
+  </p>
+  <div class="scripts-grid">
+    <div class="script-card">
+      <div class="script-name">daily-briefing.sh</div>
+      <div class="script-desc">Creates morning note with dashboard stats, Big 3 status, project pulse, CRM follow-ups</div>
+      <div class="script-schedule">⏰ Every morning</div>
+    </div>
+    <div class="script-card">
+      <div class="script-name">crm-scan.sh</div>
+      <div class="script-desc">Detects contact mentions in your daily notes, updates last-contact dates, refreshes CRM briefing</div>
+      <div class="script-schedule">⏰ Nightly</div>
+    </div>
+    <div class="script-card">
+      <div class="script-name">pattern-check.sh</div>
+      <div class="script-desc">Surfaces recurring carries, stale project actions, CRM open loops, unchecked items</div>
+      <div class="script-schedule">⏰ Nightly</div>
+    </div>
+    <div class="script-card">
+      <div class="script-name">vault-health.sh</div>
+      <div class="script-desc">Scores vault hygiene 0–100. Catches stale projects, inbox overflow, dormant contacts</div>
+      <div class="script-schedule">⏰ Weekly</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"><hr></div>
+
+<!-- How it works -->
+<section class="section fade-in" id="how">
+  <div class="section-label">Getting started</div>
+  <h2>Five minutes to your second brain</h2>
+  <p class="section-desc">
+    No accounts, no cloud, no subscriptions. Download, answer a few questions, done.
+  </p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Download & run</h3>
+      <p>Download the zip, double-click <strong>Install Brain.command</strong> (macOS), or run <code>bash start.sh</code> in Terminal. Answer a few questions about yourself.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Open in Obsidian</h3>
+      <p>Open the vault folder in Obsidian (or any markdown editor). Your files, your folders, your data — all local, all yours.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>Talk to your agent</h3>
+      <p>Open the vault in Claude, ChatGPT, or any LLM. It reads CLAUDE.md automatically. Your agent introduces itself and starts helping.</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"><hr></div>
+
+<!-- Final CTA -->
+<section class="cta-section fade-in">
+  <h2>Stop organizing. Start thinking.</h2>
+  <p>Open source. Plain markdown. Works with any AI.</p>
+  <div class="cta-terminal" onclick="copyCmd(this)">
+    <span class="prompt">$</span> git clone https://github.com/Bermanmt/My-Portable-Brain && cd My-Portable-Brain && bash start.sh
+    <span class="copy-hint">click to copy</span>
+  </div>
+  <div class="hero-ctas">
+    <a href="https://github.com/Bermanmt/My-Portable-Brain/releases/latest" class="btn btn-primary">Download v0.3</a>
+    <a href="https://github.com/Bermanmt/My-Portable-Brain" class="btn btn-secondary" target="_blank">Star on GitHub</a>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>
+    Built by <a href="https://github.com/Bermanmt" target="_blank">Andrés Berman</a> ·
+    <a href="https://github.com/Bermanmt/My-Portable-Brain" target="_blank">GitHub</a> ·
+    MIT License
+  </p>
+</footer>
+
+<script>
+// Close mobile menu on link click
+document.querySelectorAll('.nav-links a').forEach(a => {
+  a.addEventListener('click', () => {
+    document.getElementById('navLinks').classList.remove('open');
+  });
+});
+
+// Fade-in on scroll
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// Copy command
+function copyCmd(el) {
+  const text = 'git clone https://github.com/Bermanmt/My-Portable-Brain && cd My-Portable-Brain && bash start.sh';
+  navigator.clipboard.writeText(text).then(() => {
+    const hint = el.querySelector('.copy-hint');
+    hint.textContent = 'copied!';
+    hint.style.color = 'var(--green)';
+    setTimeout(() => {
+      hint.textContent = 'click to copy';
+      hint.style.color = '';
+    }, 2000);
+  });
+}
+</script>
+
+</body>
+</html>
