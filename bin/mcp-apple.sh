@@ -40,6 +40,16 @@ get_calendar_events() {
     local days="${1:-3}"
     osascript -l JavaScript <<APPLESCRIPT
 function run() {
+  // Format date with local timezone offset instead of UTC (toISOString converts to UTC)
+  function toLocalISO(d) {
+    var off = -d.getTimezoneOffset();
+    var sign = off >= 0 ? '+' : '-';
+    var pad = function(n) { return String(Math.abs(n)).padStart(2, '0'); };
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) +
+      'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) +
+      sign + pad(Math.floor(Math.abs(off)/60)) + ':' + pad(Math.abs(off)%60);
+  }
+
   var Calendar = Application("Calendar");
   var today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -59,8 +69,8 @@ function run() {
             results.push({
               calendar: cal.name(),
               title: e.summary() || "",
-              start: start.toISOString(),
-              end: e.endDate().toISOString(),
+              start: toLocalISO(start),
+              end: toLocalISO(e.endDate()),
               location: e.location() || ""
             });
           }
@@ -80,6 +90,16 @@ get_recent_emails() {
     local limit="${1:-10}"
     osascript -l JavaScript <<APPLESCRIPT
 function run() {
+  // Local ISO formatter (same as calendar script)
+  function toLocalISO(d) {
+    var off = -d.getTimezoneOffset();
+    var sign = off >= 0 ? '+' : '-';
+    var pad = function(n) { return String(Math.abs(n)).padStart(2, '0'); };
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) +
+      'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) +
+      sign + pad(Math.floor(Math.abs(off)/60)) + ':' + pad(Math.abs(off)%60);
+  }
+
   var Mail = Application("Mail");
   var results = [];
   try {
@@ -97,7 +117,7 @@ function run() {
                   results.push({
                     subject: m.subject() || "",
                     sender: m.sender() || "",
-                    date: m.dateSent().toISOString(),
+                    date: toLocalISO(m.dateSent()),
                     isRead: m.readStatus()
                   });
                 } catch(err) {}
