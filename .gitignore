@@ -3,3 +3,12 @@ ROADMAP-PART1.md
 ROADMAP-PART2.md
 ROADMAP-PART3.md
 NEXT-STEPS.md
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+bin/mcp-apple-native
+bin/calendar-helper
