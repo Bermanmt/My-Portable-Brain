@@ -203,7 +203,7 @@ MINIMAL=false
 # WELCOME
 # =============================================================================
 
-clear
+clear 2>/dev/null || true
 echo ""
 echo -e "${BOLD}Hey.${NC}"
 echo ""
@@ -253,20 +253,33 @@ hint "Recommended: ~/Brain or ~/Documents/Brain"
 
 if [ -n "$PRESET_VAULT" ]; then
     VAULT_ROOT="${PRESET_VAULT/#\~/$HOME}"
+    # Resolve relative paths (like ".") to absolute
+    if [ -d "$VAULT_ROOT" ]; then
+        VAULT_ROOT="$(cd "$VAULT_ROOT" && pwd)"
+    fi
     echo -e "  Using: ${BOLD}$VAULT_ROOT${NC}"
 else
     ask "Vault path" "~/Brain" VAULT_ROOT
     VAULT_ROOT="${VAULT_ROOT/#\~/$HOME}"
+    # Resolve relative paths to absolute
+    if [ -d "$VAULT_ROOT" ]; then
+        VAULT_ROOT="$(cd "$VAULT_ROOT" && pwd)"
+    fi
 fi
 
 if [ "$DRY_RUN" = false ] && [ -d "$VAULT_ROOT" ]; then
-    echo ""
-    warn "That folder already exists."
-    ask_yn "Continue and add files to it?" "y" CONTINUE_EXISTING
-    if [ "$CONTINUE_EXISTING" = false ]; then
+    # In config mode, auto-accept existing directory (non-interactive)
+    if [ -n "$CONFIG_FILE" ]; then
+        echo -e "  ${DIM}Directory exists — adding vault files to it.${NC}"
+    else
         echo ""
-        echo "  Aborted. Choose a different path."
-        exit 0
+        warn "That folder already exists."
+        ask_yn "Continue and add files to it?" "y" CONTINUE_EXISTING
+        if [ "$CONTINUE_EXISTING" = false ]; then
+            echo ""
+            echo "  Aborted. Choose a different path."
+            exit 0
+        fi
     fi
 fi
 

@@ -10,6 +10,8 @@
 #   bash start.sh --dry-run        → preview without creating files
 #   bash start.sh --tier 1         → skip tier selection
 #   bash start.sh --vault ~/Brain  → skip path question
+#   bash start.sh --quiet          → suppress UI (for skill/automation use)
+#   bash start.sh --config f.json  → non-interactive mode with JSON config
 # =============================================================================
 
 set -e
@@ -31,6 +33,8 @@ DRY_RUN=false
 PRESET_VAULT=""
 PRESET_TIER=""
 SIMPLE_MODE=false
+QUIET_MODE=false
+CONFIG_FILE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -39,6 +43,8 @@ while [[ $# -gt 0 ]]; do
         --tier)      PRESET_TIER="$2"; shift ;;
         --minimal)   PRESET_TIER="3" ;;
         --simple)    SIMPLE_MODE=true ;;
+        --quiet)     QUIET_MODE=true ;;
+        --config)    CONFIG_FILE="$2"; shift ;;
     esac
     shift
 done
@@ -56,30 +62,29 @@ warn()    { echo -e "${YELLOW}  ⚠ $1${NC}"; }
 info()    { echo -e "${CYAN}  → $1${NC}"; }
 
 # =============================================================================
-# WELCOME
+# WELCOME (skip in quiet mode)
 # =============================================================================
 
-clear
-echo ""
-echo -e "${BOLD}${CYAN}"
-cat << 'EOF'
+if [ "$QUIET_MODE" = false ]; then
+    clear
+    echo ""
+    echo -e "${BOLD}${CYAN}"
+    cat << 'EOF'
   ╔══════════════════════════════════════════╗
   ║         🧠  My Portable Brain            ║
   ║    A knowledge system that learns you    ║
   ╚══════════════════════════════════════════╝
 EOF
-echo -e "${NC}"
-echo -e "  ${DIM}v0.3 — github.com/Bermanmt/My-Portable-Brain${NC}"
-echo ""
-divider
-echo ""
+    echo -e "${NC}"
+    echo -e "  ${DIM}v0.3 — github.com/Bermanmt/My-Portable-Brain${NC}"
+    echo ""
+    divider
+    echo ""
+fi
 
 # =============================================================================
 # DEPENDENCY CHECK
 # =============================================================================
-
-section "Checking dependencies"
-echo ""
 
 MISSING=false
 
@@ -88,29 +93,30 @@ check_dep() {
     local label="$2"
     local required="$3"
     if command -v "$cmd" &>/dev/null; then
-        success "$label"
+        [ "$QUIET_MODE" = false ] && success "$label"
     else
         if [ "$required" = "required" ]; then
             echo -e "${RED}  ✗ $label — required, not found${NC}"
             MISSING=true
         else
-            warn "$label — optional (some features unavailable)"
+            [ "$QUIET_MODE" = false ] && warn "$label — optional (some features unavailable)"
         fi
     fi
 }
+
+[ "$QUIET_MODE" = false ] && section "Checking dependencies" && echo ""
 
 check_dep "bash"    "bash 3.2+"    "required"
 check_dep "git"     "git"          "optional"
 check_dep "claude"  "Claude CLI"   "optional"
 
-echo ""
 if [ "$MISSING" = true ]; then
     echo -e "${RED}  Required dependencies missing. Please install and re-run.${NC}"
-    echo ""
     exit 1
 fi
 
-if [ "$SIMPLE_MODE" != true ] && ! command -v "claude" &>/dev/null; then
+if [ "$QUIET_MODE" = false ] && [ "$SIMPLE_MODE" != true ] && ! command -v "claude" &>/dev/null; then
+    echo ""
     echo -e "  ${DIM}Claude CLI not found. Vault will be created but automated jobs${NC}"
     echo -e "  ${DIM}won't run. Install later: https://claude.ai/code${NC}"
     echo ""
@@ -120,8 +126,8 @@ fi
 # TIER SELECTION
 # =============================================================================
 
-if [ "$SIMPLE_MODE" = true ]; then
-    TIER="2"
+if [ "$SIMPLE_MODE" = true ] || [ "$QUIET_MODE" = true ]; then
+    TIER="${PRESET_TIER:-2}"
 else
     section "Choose your setup"
     echo ""
@@ -160,13 +166,13 @@ fi
 # RUN ONBOARDING
 # =============================================================================
 
-section "Personalizing your vault"
-echo ""
+[ "$QUIET_MODE" = false ] && section "Personalizing your vault" && echo ""
 
 ONBOARD_FLAGS=""
-[ "$DRY_RUN" = true ]      && ONBOARD_FLAGS="$ONBOARD_FLAGS --dry-run"
-[ -n "$PRESET_VAULT" ]     && ONBOARD_FLAGS="$ONBOARD_FLAGS --vault $PRESET_VAULT"
-[ "$SIMPLE_MODE" = true ]  && ONBOARD_FLAGS="$ONBOARD_FLAGS --simple"
+[ "$DRY_RUN" = true ]       && ONBOARD_FLAGS="$ONBOARD_FLAGS --dry-run"
+[ -n "$PRESET_VAULT" ]      && ONBOARD_FLAGS="$ONBOARD_FLAGS --vault $PRESET_VAULT"
+[ "$SIMPLE_MODE" = true ]   && ONBOARD_FLAGS="$ONBOARD_FLAGS --simple"
+[ -n "$CONFIG_FILE" ]       && ONBOARD_FLAGS="$ONBOARD_FLAGS --config $CONFIG_FILE"
 
 # Export tier so onboard.sh and build scripts can read it
 export BRAIN_TIER="$TIER"
@@ -192,41 +198,96 @@ if [ -z "$VAULT_ROOT" ]; then
 fi
 
 # =============================================================================
-# FIRST MISSION
+# POST-SETUP: Delete BOOTSTRAP.md (prevents re-triggering onboarding)
 # =============================================================================
 
-echo ""
-divider
-echo ""
-echo -e "  ${BOLD}${GREEN}🧠 Your vault is ready.${NC}"
-echo ""
-echo -e "  ${BOLD}Location:${NC}  $VAULT_ROOT"
-if [ "$SIMPLE_MODE" != true ]; then
-    echo -e "  ${BOLD}Tier:${NC}      $TIER — $([ "$TIER" = "1" ] && echo 'Lean' || [ "$TIER" = "2" ] && echo 'Full' || echo 'Minimal')"
+if [ -f "$SCRIPT_DIR/BOOTSTRAP.md" ]; then
+    rm -f "$SCRIPT_DIR/BOOTSTRAP.md"
 fi
-echo ""
-divider
-echo ""
-echo -e "  ${BOLD}What to do next:${NC}"
-echo ""
-echo -e "  ${CYAN}Step 1${NC}  Open ${BOLD}$VAULT_ROOT${NC} in Obsidian"
-echo -e "          File → Open Vault → select that folder"
-echo ""
-echo -e "  ${CYAN}Step 2${NC}  Drop 3 things on your mind into:"
-echo -e "          ${DIM}00-Inbox/quick-notes.md${NC}"
-echo -e "          ${DIM}Don't organize them. Just write.${NC}"
-echo ""
-echo -e "  ${CYAN}Step 3${NC}  Open the vault in Claude Code or Claude Cowork"
-echo -e "          It reads CLAUDE.md automatically."
-echo -e "          Your agent will introduce itself and guide you from there."
-echo ""
-if [ "$SIMPLE_MODE" != true ] && command -v "claude" &>/dev/null; then
-    echo -e "  ${CYAN}Step 4${NC}  (Optional) Activate scheduled briefings:"
-    echo -e "          ${DIM}bash $VAULT_ROOT/06-Agent/cron/install-jobs.sh${NC}"
+
+# Also delete from vault root if different from script dir
+if [ -f "$VAULT_ROOT/BOOTSTRAP.md" ]; then
+    rm -f "$VAULT_ROOT/BOOTSTRAP.md"
+fi
+
+# =============================================================================
+# POST-SETUP: Clean up repo files (in-place installation)
+# =============================================================================
+# When --vault . is used, the vault is created in the same folder as the repo.
+# Clean up installer/repo files that are no longer needed.
+
+if [ "$(cd "$VAULT_ROOT" && pwd)" = "$(cd "$SCRIPT_DIR" && pwd)" ] && [ -d "$VAULT_ROOT/06-Agent" ]; then
+    [ "$QUIET_MODE" = false ] && echo "" && info "Cleaning up installer files..."
+
+    # Remove installer scripts
+    rm -f "$SCRIPT_DIR/start.sh" 2>/dev/null || true
+    rm -f "$SCRIPT_DIR/install.sh" 2>/dev/null || true
+    rm -f "$SCRIPT_DIR/Install Brain.command" 2>/dev/null || true
+    rm -f "$SCRIPT_DIR/Install Windows Brain.bat" 2>/dev/null || true
+    rm -f "$SCRIPT_DIR/Install Brain.ps1" 2>/dev/null || true
+
+    # Remove repo docs and artifacts
+    rm -f "$SCRIPT_DIR/onboard-wizard.html" 2>/dev/null || true
+    rm -f "$SCRIPT_DIR/CHANGELOG.md" 2>/dev/null || true
+    rm -f "$SCRIPT_DIR/CONTRIBUTING.md" 2>/dev/null || true
+    rm -f "$SCRIPT_DIR/NEXT-STEPS.md" 2>/dev/null || true
+    rm -f "$SCRIPT_DIR/README.md" 2>/dev/null || true
+    rm -f "$SCRIPT_DIR/.DS_Store" 2>/dev/null || true
+    rm -f "$SCRIPT_DIR/.gitignore" 2>/dev/null || true
+    rm -f "$SCRIPT_DIR/brain-config.json" 2>/dev/null || true
+
+    # Remove repo directories
+    rm -rf "$SCRIPT_DIR/lib" 2>/dev/null || true
+    rm -rf "$SCRIPT_DIR/templates" 2>/dev/null || true
+    rm -rf "$SCRIPT_DIR/docs" 2>/dev/null || true
+    rm -rf "$SCRIPT_DIR/site" 2>/dev/null || true
+
+    # Remove repo git history (vault gets its own git init)
+    rm -rf "$SCRIPT_DIR/.git" 2>/dev/null || true
+
+    # Keep: LICENSE, .claude/skills/setup-brain/
+
+    [ "$QUIET_MODE" = false ] && success "Installer files removed. This folder is now your vault."
+fi
+
+# =============================================================================
+# FIRST MISSION (skip in quiet mode)
+# =============================================================================
+
+if [ "$QUIET_MODE" = false ]; then
+    echo ""
+    divider
+    echo ""
+    echo -e "  ${BOLD}${GREEN}🧠 Your vault is ready.${NC}"
+    echo ""
+    echo -e "  ${BOLD}Location:${NC}  $VAULT_ROOT"
+    if [ "$SIMPLE_MODE" != true ]; then
+        echo -e "  ${BOLD}Tier:${NC}      $TIER — $([ "$TIER" = "1" ] && echo 'Lean' || [ "$TIER" = "2" ] && echo 'Full' || echo 'Minimal')"
+    fi
+    echo ""
+    divider
+    echo ""
+    echo -e "  ${BOLD}What to do next:${NC}"
+    echo ""
+    echo -e "  ${CYAN}Step 1${NC}  Open ${BOLD}$VAULT_ROOT${NC} in Obsidian"
+    echo -e "          File → Open Vault → select that folder"
+    echo ""
+    echo -e "  ${CYAN}Step 2${NC}  Drop 3 things on your mind into:"
+    echo -e "          ${DIM}00-Inbox/quick-notes.md${NC}"
+    echo -e "          ${DIM}Don't organize them. Just write.${NC}"
+    echo ""
+    echo -e "  ${CYAN}Step 3${NC}  Open the vault in Claude Code or Claude Cowork"
+    echo -e "          It reads CLAUDE.md automatically."
+    echo -e "          Your agent will introduce itself and guide you from there."
+    echo ""
+    if [ "$SIMPLE_MODE" != true ] && command -v "claude" &>/dev/null; then
+        echo -e "  ${CYAN}Step 4${NC}  (Optional) Activate scheduled briefings:"
+        echo -e "          ${DIM}bash $VAULT_ROOT/06-Agent/cron/install-jobs.sh${NC}"
+        echo ""
+    fi
+    divider
+    echo ""
+    echo -e "  ${DIM}Why this system works: docs/philosophy.md${NC}"
+    echo -e "  ${DIM}How to connect Claude:  docs/agent-setup.md${NC}"
     echo ""
 fi
-divider
-echo ""
-echo -e "  ${DIM}Why this system works: docs/philosophy.md${NC}"
-echo -e "  ${DIM}How to connect Claude:  docs/agent-setup.md${NC}"
-echo ""
