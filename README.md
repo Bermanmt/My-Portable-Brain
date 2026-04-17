@@ -185,8 +185,8 @@ No Python. No pip. No databases.
 - [x] Quarter kickoff and ad-hoc planning support
 
 ### v0.3
-- [ ] Calendar MCP integration (real calendar data instead of manual input)
-- [ ] Email agent + email MCP
+- [x] Calendar MCP integration (real calendar data instead of manual input)
+- [x] Email agent + email MCP
 - [ ] Meeting agent + transcript MCP
 - [ ] Notification/nudge system (desktop alerts for planning, follow-ups, birthdays)
 - [ ] Linux cron support (currently macOS launchd)
