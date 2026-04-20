@@ -269,6 +269,16 @@ Vault creation date unknown — created.md added during upgrade.
 Manually update the 'created' date to when you first ran onboard.sh." \
     "06-Agent/state/created.md"
 
+# Update the template-version marker. The update-brain skill reads this file
+# to compute three-way merges. Overwrite to reflect the version we're upgrading to.
+UPGRADE_VERSION=$(cat "$REPO_ROOT/VERSION" 2>/dev/null | tr -d '[:space:]')
+[ -z "$UPGRADE_VERSION" ] && UPGRADE_VERSION="unknown"
+if [ "$DRY_RUN" = false ]; then
+    mkdir -p "$VAULT_ROOT/06-Agent/state"
+    printf '%s\n' "$UPGRADE_VERSION" > "$VAULT_ROOT/06-Agent/state/version.md"
+fi
+updated "06-Agent/state/version.md → $UPGRADE_VERSION"
+
 # Area files — STATE.md, GOALS.md, RULES.md for each existing area
 if [ -d "$VAULT_ROOT/02-Areas" ]; then
     for area_dir in "$VAULT_ROOT/02-Areas"/*/; do

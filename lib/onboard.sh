@@ -1313,6 +1313,13 @@ created: $today
 Vault created on $today via onboard.sh.
 "
 
+# Stamp the template version this vault was installed at.
+# Read by the update-brain skill to compute three-way merges against upstream.
+INSTALLED_VERSION=$(cat "$SCRIPT_DIR/../VERSION" 2>/dev/null | tr -d '[:space:]')
+[ -z "$INSTALLED_VERSION" ] && INSTALLED_VERSION="unknown"
+mkf "$VAULT_ROOT/06-Agent/state/version.md" "$INSTALLED_VERSION
+"
+
 success "06-Agent/workspace/"
 [ "$VAULT_TIER" = "1" ] && stamp_template \
     "$TEMPLATES_DIR/learn/06-agent.md" \
