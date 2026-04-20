@@ -76,7 +76,7 @@ if [ "$QUIET_MODE" = false ]; then
   ╚══════════════════════════════════════════╝
 EOF
     echo -e "${NC}"
-    echo -e "  ${DIM}v0.3 — github.com/Bermanmt/My-Portable-Brain${NC}"
+    echo -e "  ${DIM}v0.6 — github.com/Bermanmt/My-Portable-Brain${NC}"
     echo ""
     divider
     echo ""

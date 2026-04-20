@@ -11,7 +11,7 @@
 # - Overloaded inbox (more than 20 items)
 #
 # Writes a health report to 06-Agent/workspace/vault-health.md
-# Pepe reads this during session start for hygiene awareness.
+# The agent reads this during session start for hygiene awareness.
 #
 # Run via cron weekly (e.g., Sunday 8pm) or manually: brain vault-health
 # =============================================================================

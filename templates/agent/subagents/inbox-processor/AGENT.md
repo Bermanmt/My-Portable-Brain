@@ -48,6 +48,8 @@ Process items in `00-Inbox/` and route them to the right places in the vault. Re
 
 **3. Route and flag**
 
+For each item, produce a routing suggestion:
+
 | Content Type | Primary Destination | Secondary Actions |
 |-------------|--------------------|--------------------|
 | Meeting summary | `01-Projects/[project]/` or `03-Resources/` | Flag contacts for CRM update, extract action items |
@@ -91,12 +93,13 @@ When adding tasks to the registry, infer:
 
 ### CRM Updates to Route
 - [[Contact Name]]: [what to add] — source: [item]
+- New contact candidate: [Name] — context: [how they appeared]
 
 ### Needs User Decision
 - [Item]: can't determine destination — [why]
 ```
 
-Present this summary before filing anything.
+Present this summary to {{AGENT_NAME}} (or directly to the user) before filing anything.
 
 ---
 

@@ -1339,6 +1339,8 @@ cp "$TEMPLATES_DIR/agent/subagents/calendar-agent/briefing.md" \
     "$VAULT_ROOT/06-Agent/subagents/calendar-agent/briefing.md"
 cp "$TEMPLATES_DIR/agent/subagents/calendar-agent/processing-log.md" \
     "$VAULT_ROOT/06-Agent/subagents/calendar-agent/processing-log.md"
+stamp_template "$TEMPLATES_DIR/agent/subagents/calendar-agent/config.md" \
+    "$VAULT_ROOT/06-Agent/subagents/calendar-agent/config.md"
 
 if [ "$MINIMAL" = false ]; then
 mkd "$VAULT_ROOT/06-Agent/subagents/researcher"
@@ -1553,6 +1555,11 @@ success "06-Agent/cron/jobs/vault-health.sh (from template)"
 # Pattern check: detects recurring carries, stale actions, open loops
 cp "$TEMPLATES_DIR/cron/jobs/pattern-check.sh" "$VAULT_ROOT/06-Agent/cron/jobs/pattern-check.sh"
 success "06-Agent/cron/jobs/pattern-check.sh (from template)"
+
+# Refresh-all: coordinator that re-runs any stale Tier 1 cron job in one call.
+# Referenced by AGENTS.md Session Start Protocol step 9.
+cp "$TEMPLATES_DIR/cron/jobs/refresh-all.sh" "$VAULT_ROOT/06-Agent/cron/jobs/refresh-all.sh"
+success "06-Agent/cron/jobs/refresh-all.sh (from template)"
 
 if [ "$MINIMAL" = false ]; then
 mkf "$VAULT_ROOT/06-Agent/cron/jobs/daily-closing.sh" "#!/bin/bash

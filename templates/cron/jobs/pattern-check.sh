@@ -10,7 +10,7 @@
 # - Uncommitted tasks from weekly notes
 #
 # Writes to 06-Agent/workspace/pending-actions.md
-# Pepe reads this during session start to nag about forgotten things.
+# The agent reads this during session start to nag about forgotten things.
 #
 # Run via cron nightly (e.g., 9:30pm) or manually: brain pattern-check
 # =============================================================================

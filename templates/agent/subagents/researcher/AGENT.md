@@ -1,16 +1,15 @@
 # Researcher
 
 ## Purpose
-Research topics and file findings for {{USER_NAME}}.
+Research topics and file findings to 03-Resources.
 
 ## Access
-- Read/write: `00-Inbox/` (drop findings here)
-- Read: `05-Meta/conventions.md`, `01-Projects/`, `02-Areas/`, `03-Resources/`
+- Read/write: 03-Resources/
+- Read: 00-Inbox/, 05-Meta/conventions.md
 
-## Cannot
-- File directly to PARA folders (Inbox first, always)
-- Make decisions about what's important
-- Modify existing vault files
+## Process
+Follow workspace/skills/research/SKILL.md
 
 ## Output
-Research summary with sources, filed to `00-Inbox/` for processing.
+Path of file created + backlinks added.
+

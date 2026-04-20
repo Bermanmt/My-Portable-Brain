@@ -2,7 +2,7 @@
 
 > An opinionated folder structure that gives any LLM instant context on startup. Your second brain — structured for AI, owned by you.
 
-[![Status](https://img.shields.io/badge/status-v0.2-blue.svg)](https://github.com/Bermanmt/My-Portable-Brain)
+[![Status](https://img.shields.io/badge/status-v0.6-blue.svg)](https://github.com/Bermanmt/My-Portable-Brain)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Requires](https://img.shields.io/badge/requires-bash-lightgrey.svg)]()
 
@@ -175,16 +175,23 @@ No Python. No pip. No databases.
 
 ## Roadmap
 
-### v0.2 (current)
-- [x] Interactive onboarding wizard with two tiers
+### v0.6 (current)
+- [x] Interactive onboarding wizard with three tiers (Lean / Full / Minimal)
 - [x] Planning system: day-type detection, structured greetings, Big 3 cascade
-- [x] Specialist agent architecture (CRM, calendar, inbox)
+- [x] Specialist agent architecture (CRM, calendar, inbox, researcher, writer)
 - [x] CRM as relationship manager with auto-updates
-- [x] Background scripts (crm-scan, vault-health, pattern-check)
+- [x] Background scripts (crm-scan, vault-health, pattern-check, refresh-all, daily-backup)
+- [x] LLM-driven cron jobs (daily-closing, inbox-sweep, weekly-review, rebuild-context)
 - [x] Vault health scoring and pattern detection
 - [x] Quarter kickoff and ad-hoc planning support
+- [x] Agent personality layer (SOUL, IDENTITY, USER, TOOLS) and Core System scaffold
+- [x] Task registry with GTD contexts and metadata
+- [x] Vault upgrade path via `lib/upgrade.sh` / `brain update`
+- [x] Claude skill for vault setup (`.claude/skills/setup-brain/`)
 
-### v0.3
+### v0.7
+- [ ] Refactor onboard.sh to stamp from templates (remove dual sources of truth)
+- [ ] Promote `brain update` to a first-class Claude skill
 - [ ] Calendar MCP integration (real calendar data instead of manual input)
 - [ ] Email agent + email MCP
 - [ ] Meeting agent + transcript MCP
