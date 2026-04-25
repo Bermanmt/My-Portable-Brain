@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Portable Brain — Your AI's memory layer</title>
+<title>Portable Brain — Your AI charges you for context it doesn't need.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -506,6 +506,97 @@ footer a:hover { color: var(--accent); }
   border-top: 1px solid var(--border);
 }
 
+/* --- Compression stats --- */
+.compression-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 12px;
+  margin-bottom: 40px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 32px 24px;
+  text-align: center;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.stat.highlight {
+  border-color: rgba(124, 107, 245, 0.4);
+  box-shadow: 0 0 30px rgba(124, 107, 245, 0.12);
+}
+.stat-num {
+  font-family: var(--mono);
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, #e0e0e0 0%, #7c6bf5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat.highlight .stat-num {
+  background: linear-gradient(135deg, #7c6bf5 0%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  letter-spacing: 0.5px;
+}
+.principle-quote {
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  padding: 24px 28px;
+  margin-top: 24px;
+  font-size: 15px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  border-radius: 0 8px 8px 0;
+}
+.principle-quote strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* --- Aha moment cards --- */
+.aha-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 12px;
+}
+.aha-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 32px 28px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.aha-card:hover {
+  border-color: var(--border-bright);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+.aha-quote {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+.aha-card p {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.7;
+}
+
 /* --- Animations --- */
 .fade-in {
   opacity: 0;
@@ -584,6 +675,19 @@ footer a:hover { color: var(--accent); }
   /* Principles: single column */
   .principles { grid-template-columns: 1fr; gap: 0; }
 
+  /* Compression stats: single column */
+  .compression-stats { grid-template-columns: 1fr; gap: 14px; margin-bottom: 28px; }
+  .stat { padding: 24px 20px; }
+  .stat-num { font-size: 40px; margin-bottom: 10px; }
+  .stat-label { font-size: 11px; }
+  .principle-quote { padding: 20px 22px; font-size: 14px; }
+
+  /* Aha cards: single column */
+  .aha-grid { grid-template-columns: 1fr; gap: 14px; }
+  .aha-card { padding: 24px 22px; }
+  .aha-quote { font-size: 14px; margin-bottom: 12px; }
+  .aha-card p { font-size: 13px; }
+
   /* CTA */
   .cta-section { padding: 48px 16px 80px; }
   .cta-section h2 { font-size: 24px; }
@@ -607,6 +711,10 @@ footer a:hover { color: var(--accent); }
   .hero { padding: 120px 20px 60px; }
   .hero h1 { font-size: 36px; }
   .features { grid-template-columns: 1fr 1fr; }
+  .compression-stats { grid-template-columns: 1fr 1fr; }
+  .compression-stats .stat:last-child { grid-column: 1 / -1; }
+  .aha-grid { grid-template-columns: 1fr; }
+  .stat-num { font-size: 44px; }
   .steps { grid-template-columns: 1fr; }
   .cta-terminal { font-size: 12px; }
 }
@@ -619,9 +727,10 @@ footer a:hover { color: var(--accent); }
   <div class="nav-inner">
     <a href="#" class="nav-logo"><span>$</span> portable-brain</a>
     <div class="nav-links" id="navLinks">
-      <a href="#features">Features</a>
+      <a href="#why">Why</a>
+      <a href="#features">What</a>
       <a href="#vault">Structure</a>
-      <a href="#how">How it works</a>
+      <a href="#how">How</a>
       <a href="https://github.com/Bermanmt/My-Portable-Brain" target="_blank">GitHub</a>
     </div>
     <button class="hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')" aria-label="Menu">
@@ -635,10 +744,9 @@ footer a:hover { color: var(--accent); }
 <!-- Hero -->
 <section class="hero">
   <div class="hero-badge">v0.6.1 — open source</div>
-  <h1>Your AI's memory layer</h1>
+  <h1>Your AI charges you<br>for context<br>it doesn't need.</h1>
   <p class="hero-sub">
-    A personal vault that gives any LLM instant context on startup.
-    Your priorities, your people, your plans — in plain markdown, owned by you.
+    Stop paying the LLM to re-discover what matters. The Brain pre-distills the right <strong style="color: var(--accent); font-weight: 600;">1.4%</strong> of your vault every session — exactly what's relevant now. They say humans use 10% of their brain. Your portable brain uses 1.4%. That's why it works.
   </p>
   <div class="hero-ctas">
     <a href="https://github.com/Bermanmt/My-Portable-Brain/releases/latest" class="btn btn-primary">Download (.zip)</a>
@@ -667,6 +775,31 @@ footer a:hover { color: var(--accent); }
       <span class="output">  ✓ Agent configured: Sage 🧠</span><br>
       <span class="output">  ✓ Background jobs activated (4 jobs)</span><br>
       <span class="output">  ✓ 127 files created</span><br>
+    </div>
+  </div>
+</section>
+
+<div class="divider"><hr></div>
+
+<!-- The three aha moments -->
+<section class="section fade-in" id="why">
+  <div class="section-label">Why it matters</div>
+  <h2>The three moments your AI never has</h2>
+  <p class="section-desc">
+    Every AI you use is amnesiac by default. The Brain fixes three things: what your AI remembers, what it notices, and what it picks up on.
+  </p>
+  <div class="aha-grid">
+    <div class="aha-card">
+      <div class="aha-quote">🔍 "It found what I said three weeks ago."</div>
+      <p>Retrieval across memory, observations, daily notes, and CRM. Your AI references prior decisions when you bring them up — without you pointing to the file. It pulls the receipts.</p>
+    </div>
+    <div class="aha-card">
+      <div class="aha-quote">👀 "It noticed something I'm doing."</div>
+      <p>Silent pattern tracking. Topics that come up three times. People you keep mentioning. Quiet stress signals. Surfaced when relevant — never as a lecture, never before the moment is ready.</p>
+    </div>
+    <div class="aha-card">
+      <div class="aha-quote">🔁 "It picked up where I left off."</div>
+      <p>Session handoff written at the end of every conversation, read at the start of the next. Across days, across surfaces, across months. No more cold starts.</p>
     </div>
   </div>
 </section>
@@ -711,6 +844,34 @@ footer a:hover { color: var(--accent); }
       <h3>Plain markdown</h3>
       <p>No databases, no lock-in, no proprietary formats. Everything is .md files in folders. Works with Obsidian, VS Code, or any editor. Works forever.</p>
     </div>
+  </div>
+</section>
+
+<div class="divider"><hr></div>
+
+<!-- The 1.4% (compression / cost story) -->
+<section class="section fade-in" id="compression">
+  <div class="section-label">How it adds up</div>
+  <h2>Cron searches. The LLM thinks.</h2>
+  <p class="section-desc">
+    A million tokens of vault, accumulated over months. The Brain delivers exactly what your AI needs this session — never the whole thing. The other 98.6% stays available, but doesn't burden the conversation.
+  </p>
+  <div class="compression-stats">
+    <div class="stat">
+      <div class="stat-num">~1M</div>
+      <div class="stat-label">tokens of vault context<br>accumulated over months</div>
+    </div>
+    <div class="stat highlight">
+      <div class="stat-num">~20k</div>
+      <div class="stat-label">tokens delivered per session<br>curated, never crawled</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">1.4%</div>
+      <div class="stat-label">load ratio<br>the right 1.4%, every time</div>
+    </div>
+  </div>
+  <div class="principle-quote">
+    Bash, ripgrep, and specialist agents crawl, distill, and curate in cron — for free, on a schedule. The LLM only ever sees the curated result, only when you're present. <strong>Every token the LLM spends discovering what matters is a token wasted.</strong> They say humans use 10% of their brain. Your portable brain uses 1.4% — and that's the point.
   </div>
 </section>
 
