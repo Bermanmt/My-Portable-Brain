@@ -2,7 +2,7 @@
 
 > An opinionated folder structure that gives any LLM instant context on startup. Your second brain — structured for AI, owned by you.
 
-[![Status](https://img.shields.io/badge/status-v0.6.0-blue.svg)](https://github.com/Bermanmt/My-Portable-Brain)
+[![Status](https://img.shields.io/badge/status-v0.6.1-blue.svg)](https://github.com/Bermanmt/My-Portable-Brain)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Requires](https://img.shields.io/badge/requires-bash-lightgrey.svg)]()
 

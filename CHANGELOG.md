@@ -86,9 +86,11 @@ This tag is historically messy — it absorbed 22 commits of work that should ha
 
 ---
 
-## [0.6.0] — 2026-04-22
+## [0.6.1] — 2026-04-22
 
-Bundled release. Catches the public repo up from v0.5 with two waves of work shipped together: the vault → template sync (~6 weeks of live-vault protocol iteration) and the update-brain skill + version-marker infrastructure (foundation for shipping regular updates without clobbering user customizations).
+First GitHub Release since v0.5. The `v0.6.0` tag was created in the repo but never had a published Release; v0.6.1 bundles its content (vault → template sync) together with the update-brain skill + version-marker infrastructure into one consolidated release notice.
+
+Two waves of work shipped together: the vault → template sync (~6 weeks of live-vault protocol iteration) and the update-brain skill + version-marker infrastructure (foundation for shipping regular updates without clobbering user customizations).
 
 ### Added — Vault → template sync
 - **Cron jobs** — 6 new scripts in `templates/cron/jobs/`:
