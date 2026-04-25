@@ -2,7 +2,7 @@
 
 > An opinionated folder structure that gives any LLM instant context on startup. Your second brain — structured for AI, owned by you.
 
-[![Status](https://img.shields.io/badge/status-v0.6-blue.svg)](https://github.com/Bermanmt/My-Portable-Brain)
+[![Status](https://img.shields.io/badge/status-v0.6.0-blue.svg)](https://github.com/Bermanmt/My-Portable-Brain)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Requires](https://img.shields.io/badge/requires-bash-lightgrey.svg)]()
 
@@ -20,6 +20,22 @@ One command. A few questions. You get:
 - Everything in plain markdown. No databases, no lock-in, no dependencies beyond bash.
 
 **This is the context layer.** It's not an agent framework — it complements Claude, GPT, Cowork, Claude Code, or any LLM you use. Drop it in, and your AI gets you.
+
+---
+
+## Why it matters
+
+**They say humans use 10% of their brain.** Your portable brain uses ~1.4% per session — and that's the point.
+
+A mature vault holds a million tokens of accumulated context (memory, projects, people, decisions, patterns). Without curation, every session burns tokens on the LLM crawling your folder trying to figure out what's relevant. The Brain pre-distills everything in cron — for free — so the LLM only sees the right ~1.4% per session, already curated.
+
+This solves three things at once:
+
+1. **Your AI actually remembers.** Not just within a session — across sessions, across surfaces, across months. The Brain writes session memory, tracks patterns silently, and surfaces relevant past context when you reference it ("what did we decide about X three weeks ago?").
+2. **It notices things you didn't.** Topics that have come up three times across different sessions. People you keep mentioning who aren't in your CRM. Patterns in your week. Surfaced when relevant, not as a lecture.
+3. **It saves you tokens.** A typical session loads ~20k tokens of curated context instead of the LLM exploring 80–150k looking for relevance. The "I run out of tokens too fast" pain disappears.
+
+Built around three architectural commitments: **the Brain owns meaning, apps own state · cron searches, LLM thinks · adapters are additive, never subtractive.** Works with Claude, GPT, Gemini, anything that reads markdown.
 
 ---
 
@@ -175,6 +191,8 @@ No Python. No pip. No databases.
 
 ## Roadmap
 
+The roadmap is now organized around the three memory aha moments. Full plan in [`ROADMAP.md`](ROADMAP.md).
+
 ### v0.6 (current)
 - [x] Interactive onboarding wizard with three tiers (Lean / Full / Minimal)
 - [x] Planning system: day-type detection, structured greetings, Big 3 cascade
@@ -186,24 +204,53 @@ No Python. No pip. No databases.
 - [x] Quarter kickoff and ad-hoc planning support
 - [x] Agent personality layer (SOUL, IDENTITY, USER, TOOLS) and Core System scaffold
 - [x] Task registry with GTD contexts and metadata
-- [x] Vault upgrade path via `lib/upgrade.sh` / `brain update`
 - [x] Claude skill for vault setup (`.claude/skills/setup-brain/`)
+- [x] Safe update infrastructure (`update-brain` Claude skill, `VERSION` markers, 3-way merge for AGENTS.md)
 
-### v0.7
-- [ ] Refactor onboard.sh to stamp from templates (remove dual sources of truth)
-- [ ] Promote `brain update` to a first-class Claude skill
-- [ ] Calendar MCP integration (real calendar data instead of manual input)
-- [ ] Email agent + email MCP
-- [ ] Meeting agent + transcript MCP
-- [ ] Notification/nudge system (desktop alerts for planning, follow-ups, birthdays)
-- [ ] Linux cron support (currently macOS launchd)
+### v0.8 — Memory Experience (next)
+- [ ] **Memory retrieval layer** — ranked search across memory, observations, daily notes, CRM, project files. Delivers "it found what I said 3 weeks ago."
+- [ ] **Pattern surfacing upgrade** — Pepe references relevant patterns mid-conversation, not just at Friday review.
+- [ ] **Cross-session continuity primitive** — `06-Agent/state/inbound/` staging folder + absorption protocol; preps for cross-surface continuity.
 
-### v1.0
-- [ ] Model-agnostic agent runner (run specialists on any LLM provider)
-- [ ] Brain modules (users pick "Relationships", "Schedule", etc. during onboarding)
-- [ ] House Manager and Financial Manager agents
+### v0.9 — Onboarding That Delivers the Aha Fast
+- [ ] Replace 15-question flow with first-capture hook ("What's on your mind right now?")
+- [ ] First aha within 5 minutes — first session references the capture back with context
+- [ ] Bootstrap single-session rewrite
+- [ ] `brain-onboard` Claude skill alongside `start.sh`
+- [ ] Surface the compression ratio in the first-session greeting (the "1.4%" hook)
+
+### v1.0 — Context Transport MCP + Schema (the launch tag)
+- [ ] **Context Transport MCP v0.1** — three tools: `get_context`, `search_memory`, `push_session`. Stdio transport. Brain stays authoritative; remote surfaces push summaries, never edit files directly.
+- [ ] `RingFilter` class — ring-based access control built in from day one (defense in depth).
+- [ ] `weekly-review.sh` generator — Friday payoff against current task format.
+- [ ] **Task Schema v1** — minimal required fields (`id` + `area`); shadow-mode migration for 2 weeks.
+- [ ] **`brain stats` command** — surfaces compression ratio + discovery tax estimate. Launch-defining artifact.
+- [ ] **Launch benchmark** — controlled experiment (Brain vs. no-Brain, same task, measured tokens) published as `launch/benchmark-results-YYYY-MM.md`.
+
+### v1.1 — Workflow Plumbing
+- [ ] Reminders ↔ Brain sync (Mac first, Linux/Windows adapters later)
+- [ ] **Meeting Notes Protocol** — 7-stage processing pipeline that turns any transcript (Google Meet + Gemini, Fathom, Otter, manual) into CRM updates, project decisions, tasks, and indexed memory. Spec: `specs/meeting-notes-protocol.md`. Memory multiplier.
+- [ ] Monthly + quarterly review generators
+- [ ] `brain-cron` CLI + `schedule.yaml` (single-source-of-truth scheduler with platform adapters)
+
+### v1.2 — Cross-Surface Reach
+- [ ] HTTP transport on MCP + Tailscale tunnel
+- [ ] Claude Web + Mobile pull/push via the same three MCP tools
+- [ ] Ring filter enforced at HTTP transport boundary
+
+### v1.3 — Integrations
+- [ ] Apple Calendar (CalDAV) MCP connector
+- [ ] Meeting notes adapters: Google Meet + Gemini (via Calendar `attachments[]` + Drive), Fathom, Otter
+- [ ] Email agent + Gmail/IMAP MCP
+- [ ] Notification system (actionable only)
+
+### v2.0 — Platform & Modules
+- [ ] Brain modules (users pick "Relationships", "Schedule", "Finance", etc. during onboarding)
+- [ ] Model-agnostic agent runner (Claude / GPT / Ollama provider adapters)
+- [ ] House Manager and Financial Manager specialists
 - [ ] Calendar write mode (time blocking, meeting auditing)
 - [ ] Tested on macOS, Linux, Windows WSL
+- [ ] Vault OTA updates for system files (never touches user data)
 
 ---
 
