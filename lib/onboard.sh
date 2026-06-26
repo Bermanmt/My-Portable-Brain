@@ -1349,6 +1349,14 @@ cp "$TEMPLATES_DIR/agent/subagents/calendar-agent/processing-log.md" \
 stamp_template "$TEMPLATES_DIR/agent/subagents/calendar-agent/config.md" \
     "$VAULT_ROOT/06-Agent/subagents/calendar-agent/config.md"
 
+# --- Agent library scripts (memory-search, future on-demand tools) ---
+# memory-search.sh implements Tier 2 of the Memory Retrieval Protocol.
+# Required by AGENTS.md — installed for all tiers.
+mkd "$VAULT_ROOT/06-Agent/lib"
+cp "$TEMPLATES_DIR/agent/lib/memory-search.sh" \
+    "$VAULT_ROOT/06-Agent/lib/memory-search.sh"
+chmod +x "$VAULT_ROOT/06-Agent/lib/memory-search.sh"
+
 if [ "$MINIMAL" = false ]; then
 mkd "$VAULT_ROOT/06-Agent/subagents/researcher"
 stamp_template "$TEMPLATES_DIR/agent/subagents/researcher/AGENT.md" \
