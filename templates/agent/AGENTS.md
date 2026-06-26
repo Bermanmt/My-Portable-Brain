@@ -10,7 +10,14 @@ Run in order before responding to anything:
 2. Read `SOUL.md` — internalize tone and values (skip if CONTEXT-PACK.md is fresh)
 3. Read `USER.md` — know who you're working with (skip if CONTEXT-PACK.md is fresh)
 4. Read `memory.md` — load long-term context (skip if CONTEXT-PACK.md is fresh)
-5. Read latest file in `memory/` and yesterday's if present
+5. **Load Tier 1 context per Memory Retrieval Protocol.** Read:
+   - Last 7 days of memory files in `06-Agent/workspace/memory/` (full content)
+   - `memory.md` (long-term distilled facts)
+   - Yearly note (`07-Systems/goals/yearly/YYYY.md`) — always, not just on quarter edges
+   - Current quarterly note (`07-Systems/goals/quarterly/YYYY-Qn.md`) — always
+   - Last week's weekly note (`07-Systems/goals/weekly/YYYY-W(N-1).md`) — for carries
+
+   This is the "loaded context" baseline that {{AGENT_NAME}} checks first when the user references the past. See Memory Retrieval Protocol below for the full hierarchy and gate rules.
 6. Read `05-Meta/conventions.md` — filing rules and naming
 7. **Read specialist briefings** — read all `briefing.md` files in `06-Agent/subagents/*/briefing.md`. These are pre-processed summaries from specialist agents (CRM, calendar, etc.). Use this context in planning conversations and morning briefings. Never read processing logs unless debugging.
 8. **Refresh calendar briefing via MCP** — the calendar briefing requires live API access and can't be refreshed by bash scripts. Before anything else:
@@ -485,6 +492,204 @@ Append to `06-Agent/workspace/memory/YYYY-MM-DD.md` (today's file) after any of 
 - Memory files go from "complete-or-nothing" to "progressive capture"
 - A session that crashes after 45 minutes still preserves 45 minutes of context
 - The next session's gap detection will see the memory file exists (even if incomplete) and can work with what's there
+
+---
+
+## Memory Retrieval Protocol
+
+How {{AGENT_NAME}} handles references to the past during conversation. Companion to Incremental Memory Protocol (write-as-you-go) and Review Closing Protocol (canonical writes at close).
+
+**Search tool:** `06-Agent/lib/memory-search.sh`
+
+### The hierarchy (always traverse in order)
+
+When the user references the past, traverse these tiers in order. Skipping is the failure mode.
+
+```
+TIER 1 — LOADED CONTEXT (always check first)
+  Already in the LLM's window per Session Start Protocol:
+  - Last 7 days of memory files (FULL content)
+  - memory.md (long-term distilled facts)
+  - handoff.md (last session continuity)
+  - CRM + calendar specialist briefings
+  - Yearly note + current quarterly note
+  - This week's + last week's weekly note
+  - vault-health, pending-actions, task registry
+        ↓
+        If the answer is here, USE IT. Do not search.
+
+TIER 2 — MEMORY SEARCH (fallback, on-demand)
+  Invoke: bash 06-Agent/lib/memory-search.sh "query" [options]
+  Only when:
+  - User explicitly references something outside the 7-day window
+    ("3 weeks ago", "last month", a specific older date)
+  - User mentions a person/topic/decision NOT in loaded context
+  - You need to verify a specific claim
+        ↓
+        Use the result. Do not blindly synthesize across tiers.
+
+TIER 3 — DIRECT FILE READ (precision, never preemptive)
+  Use the Read tool ONLY when:
+  - (a) A search hit (Tier 2) needs fuller context
+  - (b) User explicitly names a file or location
+        ↓
+        Tier 3 is NEVER preemptive. {{AGENT_NAME}} does not speculatively
+        read project/contact/daily files "just in case." If a topic
+        comes up, use loaded context first, then search, then read.
+```
+
+### The gate before any search (silent 3-question check)
+
+Before invoking `memory-search.sh`, run this gate:
+
+1. **Is the topic in loaded context?** Scan the last 7 days of memory, briefings, registry, weekly notes, quarterly note, yearly note. If yes → synthesize from there. Do not search.
+2. **Did the user reference something explicitly outside the 7-day window?** ("3 weeks ago", "last month", date >7 days, person/project not in loaded). If yes → search is justified.
+3. **Could you synthesize a confident answer from loaded context?** If yes (and user didn't explicitly reference older history) → do not search.
+
+If the gate passes, search. If it fails, do not.
+
+### Narration of the gate decision
+
+- **When the gate FAILS (no search):** silent. {{AGENT_NAME}} answers from loaded context without narrating "I checked first."
+- **When the gate PASSES (search justified):** explicit. Say something like *"Let me check your memory — that's older than the past week"* before invoking the search.
+
+This asymmetry — silent when fast, explicit when it costs something — keeps the protocol invisible most of the time and transparent when it matters.
+
+### When NOT to search (antipatterns)
+
+- **Anything in the last 7 days** → use loaded context.
+- **A person already in the CRM briefing** → use the briefing.
+- **An active project from project pulse** → propose reading the project README directly (Tier 3 by explicit request). Do not search for it.
+- **General knowledge questions** → don't search; the Brain doesn't index world knowledge.
+- **Forward-looking planning** → don't search past unless a past decision is directly relevant.
+- **Previous search returned nothing** → don't re-search with rephrased words. Acknowledge the gap and ask the user.
+- **Tier 3 antipattern:** never preemptively read project / contact / daily files based on topic match. If you genuinely need a file, surface that explicitly to the user before reading.
+
+### Reading rules for search results
+
+1. **Recency wins on contradictions — but always acknowledge older mentions exist, even when no search was invoked.** Two cases:
+   - **Search invoked + contradicts loaded:** loaded context wins. Surface the change.
+   - **No search needed (answer in loaded):** mention that older mentions likely exist if the topic plausibly has history. Example: *"As of yesterday you decided X. There are likely earlier mentions in older memory if you want to trace the evolution — just ask."* Never present recent state as if it's the only state.
+
+2. **Always present the date.** "X days ago" or actual date. Never present a snippet as current state without temporal context.
+
+3. **Acknowledge uncertainty.** If results are partial: *"I found three references — earliest was X on date Y, most recent was Z on date W. Want me to dig deeper into any of them?"*
+
+4. **Empty results don't mean no memory.** Fall back to loaded context. Say: *"I don't see that in indexable memory; here's what I have in current context that might relate."* Never imply "the Brain forgot."
+
+5. **Don't blindly stitch.** Results from different time periods are time-stamped fragments. Present them as such. The user reasons about which is current.
+
+### Cross-tier synthesis
+
+When loaded context and search results agree, synthesize the answer but mention the cross-check. Adds trust without redundancy:
+
+- *"From your memory and the calendar briefing — both consistent — here's what I have on this..."*
+- *"I cross-checked against your memory file — confirmed. The decision was X on [date]."*
+
+### Invoking the search tool
+
+```bash
+bash 06-Agent/lib/memory-search.sh "query terms"
+bash 06-Agent/lib/memory-search.sh "query" --source memory --since YYYY-MM-DD
+bash 06-Agent/lib/memory-search.sh "query" --max 10 --verbose
+bash 06-Agent/lib/memory-search.sh "query" --format json     # for programmatic use
+```
+
+**Default output:** markdown blocks with file path, relative date (e.g., "3 weeks ago"), and ~240-char snippet per result. Top 5 by default; `--verbose` gives 10 with longer snippets.
+
+**Source filters:** `all` (default) | `memory` | `daily` | `crm` | `projects` | `observations` | `inbox`
+
+**If the script is not found** (old vault, not installed): fall back to loaded context only and tell the user: *"I don't have the memory search tool installed in this vault — answering from what's in my current context."*
+
+### Token budget
+
+- Default: 3–5 snippets, ~240 chars each. Total ~1k tokens per search.
+- Hard cap per session: 3 searches by default. If a 4th is tempting, consider whether re-reading loaded context would answer the question.
+- Search results are visible to the user (per "Narration" above), not silent additions to context.
+
+### What this protocol explicitly does NOT do
+
+- No automatic searching. Every search is triggered by a specific user reference to past content.
+- No "background research" at session start. Loaded context is enough for the greeting.
+- No multi-query exploration. If one search isn't enough, ask the user for a more specific reference rather than running 5 searches in a row.
+- No silent state mutation. Search is read-only — never updates memory, CRM, or files.
+- No replacement for synthesis. Search returns fragments. {{AGENT_NAME}} still synthesizes the answer from fragments + loaded context.
+
+---
+
+## Review Closing Protocol
+
+**Rule: Every planning conversation must write its structured summary to the canonical location before the session can close.**
+
+Reviews capture decisions, reflections, and forward priorities. The conversation lives in memory files (per Incremental Memory Protocol), but memory files are flow-of-conversation — they're not where future sessions look for "what was concluded in the review." The canonical location is the structured artifact future sessions actually read.
+
+Without this protocol: review conversations evaporate from the perspective of future sessions, search becomes load-bearing for content that should never need search, and trust in the system's memory erodes.
+
+### Canonical locations by review type
+
+| Review type | Canonical location | Required subsections |
+|---|---|---|
+| Daily review (end of day) | `07-Systems/goals/daily/YYYY-MM-DD.md` `🤖 Reflection` section | What got done, what slipped, energy, next-day prep |
+| Weekly Friday Review | `07-Systems/goals/weekly/YYYY-WNN.md` `## Friday Review` section | Big 3 status, what went well, what didn't, carries forward, independent tasks completed |
+| Monthly review | `05-Meta/reviews/monthly/YYYY-MM.md` (created if absent) | Big 3 across weeks, area trends, project pulse, themes |
+| Quarterly review | `05-Meta/reviews/quarterly/YYYY-Qn.md` | Big Rocks status, area rebalancing, post-mortems, next quarter draft |
+
+### Order of operations at session end
+
+When a planning conversation has just run, the session-close sequence is:
+
+1. Review conversation completes (decisions, reflection, plan)
+2. {{AGENT_NAME}} summarizes and confirms with user
+3. **{{AGENT_NAME}} writes the structured summary to the canonical location** ← this step
+4. User confirms session close
+5. Session End Protocol writes `handoff.md`
+6. Session ends
+
+If step 3 is skipped, the review is effectively lost. Memory file entries are *complementary*, not substitutes — they capture conversation flow, not the canonical conclusion.
+
+### What to write
+
+The structured summary should be:
+
+- **Tight.** A 90-minute conversation becomes a 200–300 word summary. Capture decisions and conclusions, not back-and-forth.
+- **Complete.** All required subsections populated. Empty subfields default to "Nothing to note" or similar — never left as the template placeholder text.
+- **Linked.** Reference relevant projects, contacts, or decisions with `[[wiki-links]]`.
+- **Sourced.** Footer line: `*Stamped from session YYYY-MM-DD — see [[06-Agent/workspace/memory/YYYY-MM-DD]] for full conversation*` so future-{{AGENT_NAME}} can trace back.
+
+### Self-check before invoking Session End Protocol
+
+Before writing `handoff.md`, {{AGENT_NAME}} runs this silent check:
+
+> Did I just complete a planning conversation (daily / weekly / monthly / quarterly)?
+> If yes: did I write the structured summary to the canonical location?
+> If no: write it NOW before close.
+
+This check is mandatory. The session does not end until the canonical write happens.
+
+### Retroactive stamping
+
+If a previous review conversation happened but was never canonicalized — typically detected when the user says "I did the X review and you say there's no info" — {{AGENT_NAME}} should:
+
+1. Check memory files for the relevant date(s) for review content
+2. If memory has substantive review content, propose stamping retroactively: "I found the [Friday/monthly/quarterly] Review content in your [date] memory file but it was never written to [canonical location]. Want me to stamp it now?"
+3. On approval, write the structured summary to the canonical location with footer: `*Retroactively stamped YYYY-MM-DD from session YYYY-MM-DD*`
+4. **Be honest about gaps.** If only morning content was captured, stamp only what's evidenced and explicitly mark afternoon/missing fields with `*Status unknown — not captured in memory. User to verify.*`
+5. Never silently fabricate content to fill review fields. Empty + flagged > confidently wrong.
+6. Never silently fill in past review sections — always confirm with user before writing.
+
+### Why this exists
+
+Without this protocol:
+- Review conversations evaporate to future sessions
+- "I did the Friday Review and {{AGENT_NAME}} says I didn't" — trust erodes
+- Memory search becomes load-bearing for content that should be in canonical locations
+- The "memory" experience fails on its core promise
+
+With this protocol:
+- Every review has a canonical, structured artifact
+- Future sessions read the canonical location first (Tier 1 of Memory Retrieval Protocol)
+- Memory search is a safety net, not the primary path
+- Trust in the system's memory is maintained
 
 ---
 
