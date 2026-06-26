@@ -159,6 +159,37 @@ Two waves of work shipped together: the vault → template sync (~6 weeks of liv
 
 ---
 
+## [0.8.0] — in progress (on branch `v0.8-memory-experience`)
+
+The memory experience. P1 (memory retrieval) shipped to branch; P2–P4 in progress.
+
+### Added (so far on branch)
+- **`memory-search.sh`** — bash + ripgrep script implementing Tier 2 of the Memory Retrieval Protocol. Ranked search across memory files, daily notes, CRM contacts, observations, project READMEs, and inbox. Configurable via `--source`, `--since`, `--max`, `--verbose`, `--format` (markdown / json / simple). Cross-platform (GNU + BSD stat / date). Lives at `06-Agent/lib/memory-search.sh` after install.
+- **AGENTS.md template — Memory Retrieval Protocol section.** Defines the 3-tier hierarchy (loaded context → memory search → direct file read), the 3-question gate before any search, asymmetric narration (silent for "don't search," explicit for "do search"), 5 reading rules including "recency wins on contradictions but always acknowledge older mentions exist," cross-tier synthesis, antipatterns, and the explicit "what this protocol does NOT do" list.
+- **AGENTS.md template — Review Closing Protocol section.** Mandates writing the structured review summary to the canonical location (weekly note, monthly review, quarterly review) before the session can close. Includes self-check at session end and retroactive stamping rules for legacy gaps.
+- **Session Start Protocol step 5 expanded.** Was "Read latest file in memory/ and yesterday's if present." Now loads 7 days of memory + memory.md + yearly note + current quarterly note + last week's weekly note (the full Tier 1 baseline per Memory Retrieval Protocol).
+- **`lib/onboard.sh`** — installs `memory-search.sh` to `06-Agent/lib/` on new vault installs (for all tiers).
+
+### Planned for v0.8.0 release
+- **P2: Pattern surfacing upgrade.** `observations.md` becomes queryable; agent references relevant patterns mid-conversation (not just at Friday review). Plus pattern deduplication in pattern-check.sh and git-based project staleness detection.
+- **P3: Cross-session continuity primitive.** `06-Agent/state/inbound/` staging folder + absorption protocol. Foundation for cross-surface continuity (full delivery in v1.0 with MCP push_session).
+
+### Specs
+- `specs/memory-retrieval-protocol.md` (v0.1 locked 2026-04-26) — the authoritative spec for tier hierarchy, gate, rules, and antipatterns.
+- `specs/brain-compression-benchmark.md` — methodology for measuring compression ratio (used by `brain stats` in v1.0).
+- `specs/meeting-notes-protocol.md` — v1.1 P2 spec, drafted ahead of implementation.
+
+### Real-world validation (so far)
+First end-to-end test in MyFirstBrain on 2026-06-25 with 4 queries:
+1. "¿Qué hice esta semana?" → Tier 1 only (no search), surfaced memory gap explicitly. ✅
+2. "¿En qué quedó la conversación con Sheilla?" → Tier 2 invoked, empty result handled honestly (no fabrication). ✅
+3. "¿Te acordás cuando hablamos del referral program hace 2 meses?" → Tier 2 with explicit narration ("déjame buscar — eso es más de 7 días atrás"), multi-source synthesis (memory + project README), honest acknowledgment of gaps. ✅✅
+4. "¿Qué concluí en mi último Friday Review?" → Found W24 canonical content + surfaced W25/W26 gaps. ✅
+
+Protocol behavior held cleanly. Minor refinements identified (narration consistency, retroactive stamping bridge) — non-blocking, iterating in branch.
+
+---
+
 ## What's next
 
 The forward-looking plan no longer lives in this CHANGELOG — it lives in the project [`ROADMAP.md`](https://github.com/Bermanmt/My-Portable-Brain/blob/main/ROADMAP.md), reframed around three memory aha moments:
